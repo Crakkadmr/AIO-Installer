@@ -21,7 +21,6 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=Output
 OutputBaseFilename=AIOInstaller-Setup
-SetupIconFile=AIOInstaller\bin\Release\AIOInstaller.exe
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
