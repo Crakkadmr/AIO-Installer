@@ -51,6 +51,7 @@ namespace AIOInstaller
         private Button btnRemove;
         private Button btnOpenDatabase;
         private Button btnSync;
+        private Button btnDownload;
         private Label lblCredit;
         private Label lblTotalCount;
 
@@ -394,11 +395,15 @@ namespace AIOInstaller
             btnSync = CreateModernButton("🔄 Yenile", C(245, 158, 11));
             btnSync.Click += BtnSync_Click;
 
+            btnDownload = CreateModernButton("🌐 İndir", C(124, 58, 237));
+            btnDownload.Click += BtnDownload_Click;
+
             buttonFlow.Controls.Add(btnAdd);
             buttonFlow.Controls.Add(btnInstall);
             buttonFlow.Controls.Add(btnRemove);
             buttonFlow.Controls.Add(btnOpenDatabase);
             buttonFlow.Controls.Add(btnSync);
+            buttonFlow.Controls.Add(btnDownload);
 
             buttonPanel.Controls.Add(buttonFlow);
 
@@ -878,6 +883,15 @@ namespace AIOInstaller
             btnRemove.Enabled = enabled;
             btnOpenDatabase.Enabled = enabled;
             btnSync.Enabled = enabled;
+            btnDownload.Enabled = enabled;
+        }
+
+        private void BtnDownload_Click(object sender, EventArgs e)
+        {
+            using (var form = new OnlineAppsForm())
+            {
+                form.ShowDialog(this);
+            }
         }
 
         private void BtnStopInstall_Click(object sender, EventArgs e)
