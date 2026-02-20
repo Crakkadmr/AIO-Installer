@@ -8,10 +8,17 @@
 ![Framework](https://img.shields.io/badge/.NET_Framework-4.8-512BD4?style=for-the-badge&logo=dotnet)
 ![Language](https://img.shields.io/badge/C%23-WinForms-239120?style=for-the-badge&logo=csharp)
 ![Made by](https://img.shields.io/badge/Made_by-Demircan-3B82F6?style=for-the-badge)
+![Status](https://img.shields.io/badge/Durum-Arşivlendi-red?style=for-the-badge)
 
 > Birden fazla kurulum dosyasını tek tıkla toplu yükleyin. Yerel ve çevrimiçi program yönetimini tek bir arayüzde birleştiren modern, dark temalı bir Windows uygulaması.
 
 </div>
+
+> [!CAUTION]
+> ## 🔒 Bu proje artık aktif olarak geliştirilmemektedir
+>
+> Bu depo **v1.2** sürümüyle arşivlenmiştir. Yeni özellik eklenmeyecek, hata düzeltmesi yapılmayacak ve pull request kabul edilmeyecektir.
+> Mevcut kod olduğu gibi bırakılmıştır; dilediğiniz gibi fork edip kullanabilirsiniz.
 
 ---
 
