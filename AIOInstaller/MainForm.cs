@@ -1042,17 +1042,19 @@ namespace AIOInstaller
         {
             var result = ProgramManager.SyncDatabase();
             string dbPath = ProgramManager.GetDatabaseFolder();
-            
+
+            // Her zaman listeyi yenile (değişiklik olmasa dahi görünüm güncel kalmali)
+            LoadPrograms();
+
             if (result.added > 0 || result.removed > 0)
             {
                 MessageBox.Show($"Senkronizasyon tamamlandı!\n\nYol: {dbPath}\nEklenen: {result.added}\nKaldırılan: {result.removed}", 
                     "Veritabanı Güncellendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadPrograms();
             }
             else
             {
-                MessageBox.Show($"Veritabanı zaten güncel.\nYol: {dbPath}\n\nHiçbir değişiklik bulunmadı.", 
-                    "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Veritabanı tarandı ve liste güncellendi.\nYol: {dbPath}", 
+                    "Yenilendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 

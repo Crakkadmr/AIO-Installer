@@ -56,11 +56,12 @@ namespace AIOInstaller
             // Otomatik senkronizasyon: Disk ile XML listesini eşle
             bool changed = false;
 
-            // Diskteki exe dosyalarını al
-            string[] exeFiles = Directory.Exists(DatabaseFolder) 
-                ? Directory.GetFiles(DatabaseFolder, "*.exe") 
+            // Diskteki kurulum dosyalarını al (.exe, .msi, .zip)
+            var installerExtensions = new[] { "*.exe", "*.msi", "*.zip" };
+            var diskFiles = Directory.Exists(DatabaseFolder)
+                ? installerExtensions.SelectMany(ext => Directory.GetFiles(DatabaseFolder, ext)).ToArray()
                 : new string[0];
-            var filesOnDisk = exeFiles.Select(Path.GetFileName).ToList();
+            var filesOnDisk = diskFiles.Select(Path.GetFileName).ToList();
 
             // XML'de olup diskte olmayan kayıtları kaldır
             var toRemove = programs.Where(p => !filesOnDisk.Contains(p.FileName, StringComparer.OrdinalIgnoreCase)).ToList();
@@ -129,9 +130,10 @@ namespace AIOInstaller
                 return false;
             }
 
-            if (!exeFilePath.ToLower().EndsWith(".exe"))
+            string lowerPath = exeFilePath.ToLower();
+            if (!lowerPath.EndsWith(".exe") && !lowerPath.EndsWith(".msi") && !lowerPath.EndsWith(".zip"))
             {
-                System.Windows.Forms.MessageBox.Show("Sadece .exe dosyaları eklenebilir!", 
+                System.Windows.Forms.MessageBox.Show("Sadece .exe, .msi veya .zip dosyaları eklenebilir!", 
                     "Hata", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                 return false;
             }
@@ -191,7 +193,8 @@ namespace AIOInstaller
                 for (int i = 0; i < total; i++)
                 {
                     string filePath = exeFilePaths[i];
-                    if (!File.Exists(filePath) || !filePath.ToLower().EndsWith(".exe")) continue;
+                    string fp = filePath.ToLower();
+                    if (!File.Exists(filePath) || (!fp.EndsWith(".exe") && !fp.EndsWith(".msi") && !fp.EndsWith(".zip"))) continue;
 
                     try
                     {
@@ -382,7 +385,8 @@ namespace AIOInstaller
             // Bu yüzden LoadPrograms'ın hata durumunu kontrol etmek iyi olurdu 
             // ama mevcut yapı mesaj kutusu gösteriyor.
 
-            string[] exeFiles = Directory.GetFiles(DatabaseFolder, "*.exe");
+            var installerExts = new[] { "*.exe", "*.msi", "*.zip" };
+            string[] exeFiles = installerExts.SelectMany(ext => Directory.GetFiles(DatabaseFolder, ext)).ToArray();
             
             int addedCount = 0;
             int removedCount = 0;
