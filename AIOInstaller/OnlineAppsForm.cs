@@ -14,17 +14,21 @@ namespace AIOInstaller
     public class OnlineAppsForm : Form
     {
         // ─── UI ───────────────────────────────────────────────────────────
-        private ListBox listCategories;
-        private Panel   panelAppList;
-        private Panel   panelStatus;
-        private Label   lblStatus;
+        private ListBox     listCategories;
+        private Panel       panelAppList;
+        private Panel       panelStatus;
+        private Label       lblStatus;
         private ProgressBar progressBar;
-        private Button  btnCancelDownload;
-        private Label   lblHeader;
+        private Button      btnCancelDownload;
+        private Label       lblHeader;
 
         // ─── State ────────────────────────────────────────────────────────
-        private List<OnlineApp>      allApps;
+        private List<OnlineApp>         allApps;
         private CancellationTokenSource cts;
+
+        // ─── Database klasör yolu ─────────────────────────────────────────
+        private static readonly string DatabaseDir = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "Database");
 
         // ─── Font/Color helpers ──────────────────────────────────────────
         private static Font UiFont(float size, FontStyle style = FontStyle.Regular)
@@ -48,6 +52,12 @@ namespace AIOInstaller
             new OnlineApp("Brave Browser", "Reklam engelleyici dahili tarayıcı",
                 "Tarayıcı", "https://laptop-updates.brave.com/latest/winx64",
                 "/silent /install", "Son", "~85 MB", "🦁"),
+            new OnlineApp("Opera GX", "Oyuncular için özel tarayıcı",
+                "Tarayıcı", "https://net.geo.opera.com/opera_gx/stable/windows",
+                "/silent /install", "Son", "~100 MB", "🎮"),
+            new OnlineApp("Microsoft Edge", "Microsoft'un Chromium tabanlı tarayıcısı",
+                "Tarayıcı", "https://go.microsoft.com/fwlink/?linkid=2108834&Channel=Stable&language=tr&brand=M100",
+                "/silent /install", "Son", "~110 MB", "🌊"),
 
             // ── Medya ─────────────────────────────────────────────────────
             new OnlineApp("VLC Media Player", "Evrensel medya oynatıcı",
@@ -74,18 +84,33 @@ namespace AIOInstaller
             new OnlineApp("Kdenlive", "Profesyonel ücretsiz video editörü",
                 "Medya", "https://download.kde.org/stable/kdenlive/23.08/windows/kdenlive-23.08.5.exe",
                 "/S", "Son", "~250 MB", "🎥"),
+            new OnlineApp("foobar2000", "Gelişmiş ve hafif müzik çalar",
+                "Medya", "https://www.foobar2000.org/files/foobar2000_v2.1.4.exe",
+                "/S", "2.1.4", "~6 MB", "🎵"),
+            new OnlineApp("AIMP", "Profesyonel özellikli müzik çalar",
+                "Medya", "https://www.aimp.ru/files/windows/builds/aimp_5.10.2418_w64.exe",
+                "/S", "5.10", "~25 MB", "🎶"),
+            new OnlineApp("MediaInfo", "Medya dosyası bilgi görüntüleme aracı",
+                "Medya", "https://mediaarea.net/download/binary/mediainfo-gui/24.01/MediaInfo_GUI_24.01_Windows_x64.exe",
+                "/S", "24.01", "~8 MB", "ℹ️"),
+            new OnlineApp("Kodi", "Açık kaynaklı medya merkezi",
+                "Medya", "https://mirrors.kodi.tv/releases/windows/win64/kodi-21.0-Omega-x64.exe",
+                "/S", "21.0", "~90 MB", "📺"),
 
             // ── Araçlar ───────────────────────────────────────────────────
             new OnlineApp("7-Zip", "Ücretsiz dosya sıkıştırma aracı",
                 "Araçlar", "https://www.7-zip.org/a/7z2301-x64.exe",
-                "/S", "23.01", "~1.5 MB", "🗜"),
+                "/S", "23.01", "~1.5 MB", "🗜️"),
             new OnlineApp("WinRAR", "Popüler arşivleme programı",
                 "Araçlar", "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-701.exe",
                 "/S", "7.01", "~3.5 MB", "📦"),
+            new OnlineApp("NanaZip", "Modern arayüzlü 7-Zip çatalı",
+                "Araçlar", "https://github.com/M2Team/NanaZip/releases/latest/download/NanaZip.exe",
+                "/S", "Son", "~3 MB", "🗜️"),
             new OnlineApp("AnyDesk", "Uzak masaüstü erişim aracı",
                 "Araçlar", "https://download.anydesk.com/AnyDesk.exe",
                 "--install C:\\Program Files\\AnyDesk --start-with-win --create-shortcuts --silent",
-                "Son", "~4 MB", "🖥"),
+                "Son", "~4 MB", "🖥️"),
             new OnlineApp("TeamViewer", "Uzak bağlantı ve destek aracı",
                 "Araçlar", "https://download.teamviewer.com/download/TeamViewer_Setup_x64.exe",
                 "/S", "Son", "~50 MB", "📡"),
@@ -101,12 +126,21 @@ namespace AIOInstaller
             new OnlineApp("HWiNFO64", "Kapsamlı sistem donanım izleme aracı",
                 "Araçlar", "https://www.hwinfo.com/files/hwi_780.exe",
                 "/VERYSILENT /NORESTART", "7.80", "~12 MB", "🖥️"),
+            new OnlineApp("GPU-Z", "Ekran kartı bilgi ve izleme aracı",
+                "Araçlar", "https://download.techpowerup.com/GPU-Z.2.57.0.exe",
+                "/S", "2.57", "~5 MB", "🎮"),
             new OnlineApp("CrystalDiskInfo", "Disk sağlık durumu izleme aracı",
                 "Araçlar", "https://crystalmark.info/redirect.php?product=CrystalDiskInfoInstaller",
                 "/VERYSILENT /NORESTART", "Son", "~6 MB", "💿"),
+            new OnlineApp("CrystalDiskMark", "Disk hız testi aracı",
+                "Araçlar", "https://crystalmark.info/redirect.php?product=CrystalDiskMarkInstaller",
+                "/VERYSILENT /NORESTART", "Son", "~5 MB", "⚡"),
             new OnlineApp("Bitwarden", "Açık kaynaklı şifre yöneticisi",
                 "Araçlar", "https://github.com/bitwarden/clients/releases/latest/download/Bitwarden-Installer-x64.exe",
                 "/S", "Son", "~90 MB", "🔐"),
+            new OnlineApp("KeePassXC", "Yerel şifre yöneticisi",
+                "Araçlar", "https://github.com/keepassxreboot/keepassxc/releases/latest/download/KeePassXC-2.7.7-Win64.msi",
+                "/quiet /norestart", "2.7.7", "~35 MB", "🔑"),
             new OnlineApp("Everything", "Anlık dosya arama motoru",
                 "Araçlar", "https://www.voidtools.com/Everything-1.4.1.1024.x64-Setup.exe",
                 "/S", "1.4.1", "~2 MB", "🔎"),
@@ -119,12 +153,56 @@ namespace AIOInstaller
             new OnlineApp("VirtualBox", "Ücretsiz sanallaştırma platformu",
                 "Araçlar", "https://download.virtualbox.org/virtualbox/7.0.14/VirtualBox-7.0.14-161095-Win.exe",
                 "--silent", "7.0.14", "~110 MB", "📦"),
+            new OnlineApp("WinDirStat", "Disk kullanım görselleştirme aracı",
+                "Araçlar", "https://github.com/windirstat/windirstat/releases/latest/download/windirstat1_1_2_setup.exe",
+                "/S", "1.1.2", "~1 MB", "📊"),
+            new OnlineApp("Bulk Rename Utility", "Toplu dosya yeniden adlandırma aracı",
+                "Araçlar", "https://www.bulkrenameutility.co.uk/Downloads/BRU_Setup.exe",
+                "/S", "Son", "~8 MB", "📝"),
+            new OnlineApp("Autoruns", "Başlangıç programlarını yönetme aracı",
+                "Araçlar", "https://download.sysinternals.com/files/Autoruns.zip",
+                "", "Son", "~1 MB", "⚙️"),
+            new OnlineApp("Rufus", "USB önyükleme diski oluşturma aracı",
+                "Araçlar", "https://github.com/pbatard/rufus/releases/latest/download/rufus-4.4.exe",
+                "", "4.4", "~1.5 MB", "💾"),
+            new OnlineApp("BalenaEtcher", "SD kart / USB imaj yazma aracı",
+                "Araçlar", "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-Setup-1.18.11.exe",
+                "/S", "Son", "~140 MB", "💿"),
+            new OnlineApp("Ventoy", "Çoklu ISO USB önyükleme aracı",
+                "Araçlar", "https://github.com/ventoy/Ventoy/releases/latest/download/ventoy-1.0.97-windows.zip",
+                "", "Son", "~15 MB", "🔧"),
+            new OnlineApp("PowerToys", "Windows güç kullanıcı araçları paketi",
+                "Araçlar", "https://github.com/microsoft/PowerToys/releases/latest/download/PowerToysSetup-0.79.0-x64.exe",
+                "/quiet", "Son", "~200 MB", "⚡"),
+            new OnlineApp("f.lux", "Ekran renk sıcaklığı ayarlama aracı",
+                "Araçlar", "https://justgetflux.com/dlwin.html",
+                "/S", "Son", "~2 MB", "🌙"),
+            new OnlineApp("Rainmeter", "Masaüstü özelleştirme platformu",
+                "Araçlar", "https://github.com/rainmeter/rainmeter/releases/latest/download/Rainmeter-4.5.17.exe",
+                "/S", "Son", "~5 MB", "🎨"),
+            new OnlineApp("TreeSize Free", "Klasör boyutu analiz aracı",
+                "Araçlar", "https://downloads.jam-software.de/treesize_free/TreeSizeFreeSetup.exe",
+                "/S", "Son", "~25 MB", "🌳"),
+
+            // ── Güvenlik ──────────────────────────────────────────────────
+            new OnlineApp("Malwarebytes", "Gelişmiş kötü yazılım temizleme aracı",
+                "Güvenlik", "https://www.malwarebytes.com/api/downloads/mb-windows?filename=MBSetup.exe",
+                "/VERYSILENT /NORESTART", "Son", "~80 MB", "🛡️"),
+            new OnlineApp("Avast Free Antivirus", "Ücretsiz antivirüs yazılımı",
+                "Güvenlik", "https://down.avast.com/softw/full/avast_free_antivirus_setup_online.exe",
+                "/silent /sp-", "Son", "~200 MB", "🔒"),
+            new OnlineApp("AdwCleaner", "Reklam yazılımı temizleme aracı",
+                "Güvenlik", "https://downloads.malwarebytes.com/file/adwcleaner",
+                "/VERYSILENT", "Son", "~10 MB", "🧹"),
+            new OnlineApp("Glasswire", "Ağ izleme ve güvenlik duvarı",
+                "Güvenlik", "https://download.glasswire.com/GlassWireSetup.exe",
+                "/VERYSILENT /NORESTART", "Son", "~70 MB", "🌐"),
 
             // ── Geliştirici Araçları ──────────────────────────────────────
             new OnlineApp("VS Code", "Hafif ve güçlü kod editörü",
                 "Geliştirici", "https://update.code.visualstudio.com/latest/win32-x64-user/stable",
                 "/VERYSILENT /MERGETASKS=!runcode,addcontextmenufiles,addcontextmenufolders,associatewithfiles,addtopath",
-                "Son", "~80 MB", "🖊"),
+                "Son", "~80 MB", "💻"),
             new OnlineApp("Git", "Dağıtık versiyon kontrol sistemi",
                 "Geliştirici", "https://github.com/git-for-windows/git/releases/latest/download/Git-2.44.0-64-bit.exe",
                 "/SILENT /NORESTART", "2.44.0", "~50 MB", "🐙"),
@@ -144,8 +222,8 @@ namespace AIOInstaller
                 "Geliştirici", "https://winscp.net/download/WinSCP-6.3.2-Setup.exe",
                 "/VERYSILENT /NORESTART", "6.3.2", "~12 MB", "📁"),
             new OnlineApp("PuTTY", "SSH ve Telnet istemcisi",
-                "Geliştirici", "https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.80-installer.msi",
-                "/quiet /norestart", "0.80", "~3 MB", "🔒"),
+                "Geliştirici", "https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.80-installer.exe",
+                "/S", "0.80", "~3 MB", "🔒"),
             new OnlineApp("Postman", "API geliştirme ve test aracı",
                 "Geliştirici", "https://dl.pstmn.io/download/latest/win64",
                 "/S", "Son", "~150 MB", "📮"),
@@ -155,11 +233,26 @@ namespace AIOInstaller
             new OnlineApp("HeidiSQL", "MySQL/MariaDB/PostgreSQL veritabanı istemcisi",
                 "Geliştirici", "https://www.heidisql.com/installers/HeidiSQL_12.6.0.6765_Setup.exe",
                 "/VERYSILENT /NORESTART", "12.6", "~20 MB", "🗄️"),
+            new OnlineApp("DBeaver Community", "Evrensel veritabanı yönetim aracı",
+                "Geliştirici", "https://dbeaver.io/files/dbeaver-ce-latest-x86_64-setup.exe",
+                "/S", "Son", "~120 MB", "🗃️"),
+            new OnlineApp("Insomnia", "REST API test ve debug aracı",
+                "Geliştirici", "https://github.com/Kong/insomnia/releases/latest/download/Insomnia.Setup.9.3.3.exe",
+                "/S", "Son", "~180 MB", "😴"),
+            new OnlineApp("FileZilla", "FTP/SFTP istemcisi",
+                "Geliştirici", "https://download.filezilla-project.org/client/FileZilla_3.66.5_win64-setup.exe",
+                "/S", "3.66.5", "~12 MB", "📂"),
+            new OnlineApp("Windows Terminal", "Modern terminal emülatörü",
+                "Geliştirici", "https://github.com/microsoft/terminal/releases/latest/download/Microsoft.WindowsTerminal_Win10_1.19.10821.0_8wekyb3d8bbwe.msixbundle",
+                "", "Son", "~100 MB", "⌨️"),
+            new OnlineApp("GitKraken", "Görsel Git istemcisi",
+                "Geliştirici", "https://release.gitkraken.com/win64/GitKrakenSetup.exe",
+                "/S", "Son", "~200 MB", "🦑"),
+            new OnlineApp("Sublime Text", "Hızlı ve şık kod editörü",
+                "Geliştirici", "https://download.sublimetext.com/sublime_text_build_4169_x64_setup.exe",
+                "/VERYSILENT", "4.4169", "~20 MB", "✏️"),
 
             // ── İletişim ──────────────────────────────────────────────────
-            new OnlineApp("Zoom", "Video konferans ve toplantı aracı",
-                "İletişim", "https://zoom.us/client/latest/ZoomInstallerFull.exe",
-                "/quiet /norestart", "Son", "~15 MB", "📹"),
             new OnlineApp("Discord", "Sesli sohbet ve topluluk platformu",
                 "İletişim", "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
                 "--silent", "Son", "~80 MB", "🎮"),
@@ -169,15 +262,24 @@ namespace AIOInstaller
             new OnlineApp("Telegram", "Hızlı ve güvenli mesajlaşma platformu",
                 "İletişim", "https://telegram.org/dl/desktop/win64",
                 "/S", "Son", "~45 MB", "✈️"),
+            new OnlineApp("Zoom", "Video konferans ve toplantı aracı",
+                "İletişim", "https://zoom.us/client/latest/ZoomInstallerFull.exe",
+                "/quiet /norestart", "Son", "~15 MB", "📹"),
             new OnlineApp("Microsoft Teams", "Kurumsal ekip iletişim platformu",
                 "İletişim", "https://teams.microsoft.com/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
                 "/quiet /norestart", "Son", "~130 MB", "💼"),
             new OnlineApp("Slack", "Ekip iletişimi ve iş birliği platformu",
                 "İletişim", "https://slack.com/ssb/download-win64-msi",
-                "/quiet", "Son", "~120 MB", "💬"),
+                "/quiet", "Son", "~120 MB", "🧵"),
             new OnlineApp("Skype", "Microsoft video arama ve mesajlaşma uygulaması",
                 "İletişim", "https://get.skype.com/go/getskype-full",
                 "/VERYSILENT /SP-", "Son", "~80 MB", "📞"),
+            new OnlineApp("Viber", "Ücretsiz sesli ve görüntülü arama uygulaması",
+                "İletişim", "https://download.cdn.viber.com/cdn/desktop/Windows/ViberSetup.exe",
+                "/S", "Son", "~200 MB", "📱"),
+            new OnlineApp("Signal", "Gizlilik öncelikli güvenli mesajlaşma",
+                "İletişim", "https://updates.signal.org/desktop/signal-desktop-win-7.20.0.exe",
+                "/S", "Son", "~200 MB", "🔏"),
 
             // ── Oyun İstemcisi ────────────────────────────────────────────
             new OnlineApp("Steam", "Dünyanın en büyük oyun platformu",
@@ -189,7 +291,7 @@ namespace AIOInstaller
             new OnlineApp("Riot Client", "Riot Games oyunları istemcisi (LoL, Valorant, TFT...)",
                 "Oyun İstemcisi", "https://valorant.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.live.eu.exe",
                 "--skip-to-install", "Son", "~50 MB", "⚔️"),
-            new OnlineApp("Battle.net", "Blizzard oyun istemcisi (WoW, Overwatch 2, Diablo 4...)",
+            new OnlineApp("Battle.net", "Blizzard oyun istemcisi (WoW, OW2, Diablo 4...)",
                 "Oyun İstemcisi", "https://downloader.battle.net/desktop/Battle.net-Setup.exe",
                 "--lang=trTR", "Son", "~2 MB", "🔵"),
             new OnlineApp("Ubisoft Connect", "Ubisoft oyun istemcisi (Assassin's Creed, Far Cry...)",
@@ -201,6 +303,12 @@ namespace AIOInstaller
             new OnlineApp("GOG Galaxy", "DRM-free oyun platformu",
                 "Oyun İstemcisi", "https://cdn.gog.com/open/galaxy/client/installer/win/GOGGalaxySetup_2.0.exe",
                 "/VERYSILENT /NORESTART", "Son", "~60 MB", "🌌"),
+            new OnlineApp("Playnite", "Açık kaynaklı oyun kütüphane yöneticisi",
+                "Oyun İstemcisi", "https://github.com/JosefNemec/Playnite/releases/latest/download/PlayniteInstaller.exe",
+                "/S", "Son", "~15 MB", "🎲"),
+            new OnlineApp("Xbox App", "Microsoft Xbox oyun istemcisi",
+                "Oyun İstemcisi", "https://go.microsoft.com/fwlink/?linkid=2213773",
+                "/quiet", "Son", "~5 MB", "🎮"),
 
             // ── Ofis ──────────────────────────────────────────────────────
             new OnlineApp("LibreOffice", "Ücretsiz ve açık kaynaklı ofis paketi",
@@ -212,6 +320,38 @@ namespace AIOInstaller
             new OnlineApp("Foxit PDF Reader", "Kapsamlı özellikli PDF okuyucu",
                 "Ofis", "https://cdn01.foxitsoftware.com/pub/foxit/reader/desktop/win/2024.2/2024.2.0.25138/FoxitPDFReader2024.2.0.25138_Setup_Prom.exe",
                 "/quiet /norestart", "Son", "~75 MB", "📕"),
+            new OnlineApp("Okular", "KDE'nin çok formatlı belge okuyucusu",
+                "Ofis", "https://cdn.kde.org/ci-builds/graphics/okular/master/windows/okular-latest-amd64.exe",
+                "/S", "Son", "~80 MB", "📚"),
+            new OnlineApp("OnlyOffice Desktop", "Microsoft Office uyumlu ofis paketi",
+                "Ofis", "https://download.onlyoffice.com/install/desktop/editors/windows/onlyoffice_desktopeditors_x64.exe",
+                "/S", "Son", "~400 MB", "📊"),
+            new OnlineApp("Notion", "Not alma ve proje yönetim aracı",
+                "Ofis", "https://desktop-release.notion-static.com/Notion%20Setup%203.13.0.exe",
+                "/S", "Son", "~140 MB", "📌"),
+            new OnlineApp("Obsidian", "Markdown tabanlı bilgi yönetim uygulaması",
+                "Ofis", "https://github.com/obsidianmd/obsidian-releases/releases/latest/download/Obsidian-1.5.8.exe",
+                "/S", "Son", "~80 MB", "🔮"),
+
+            // ── Grafik & Tasarım ──────────────────────────────────────────
+            new OnlineApp("GIMP", "Ücretsiz ve güçlü görüntü düzenleme yazılımı",
+                "Grafik", "https://download.gimp.org/mirror/pub/gimp/v2.10/windows/gimp-2.10.36-setup-2.exe",
+                "/S", "2.10.36", "~250 MB", "🖼️"),
+            new OnlineApp("Inkscape", "Vektör grafik editörü",
+                "Grafik", "https://inkscape.org/gallery/item/44680/inkscape-1.3.2_2023-11-25_091e20e-x64.exe",
+                "/S", "1.3.2", "~120 MB", "✒️"),
+            new OnlineApp("paint.net", "Kullanımı kolay görüntü düzenleme aracı",
+                "Grafik", "https://github.com/paintdotnet/release/releases/latest/download/paint.net.5.0.13.install.anycpu.web.zip",
+                "/S", "5.0.13", "~8 MB", "🎨"),
+            new OnlineApp("DaVinci Resolve", "Profesyonel video düzenleme yazılımı",
+                "Grafik", "https://www.blackmagicdesign.com/api/support/us/downloads.json",
+                "/S", "Son", "~4 GB", "🎬"),
+            new OnlineApp("Canva Desktop", "Çevrimiçi tasarım aracının masaüstü uygulaması",
+                "Grafik", "https://desktop.canva.com/windows/prod/Canva.exe",
+                "/S", "Son", "~200 MB", "🎨"),
+            new OnlineApp("Blender", "3D modelleme ve animasyon yazılımı",
+                "Grafik", "https://download.blender.org/release/Blender4.1/blender-4.1.0-windows-x64.msi",
+                "/quiet /norestart", "4.1.0", "~700 MB", "🦴"),
         };
 
         // ─── Constructor ────────────────────────────────────────────────
@@ -219,7 +359,6 @@ namespace AIOInstaller
         {
             allApps = BuildCatalogue();
             InitializeUi();
-            // İlk kategoriyi seç
             if (listCategories.Items.Count > 0)
                 listCategories.SelectedIndex = 0;
         }
@@ -228,18 +367,19 @@ namespace AIOInstaller
         private void InitializeUi()
         {
             this.SuspendLayout();
-            this.Text              = "🌐 Online Program İndir";
-            this.Size              = new Size(960, 660);
-            this.MinimumSize       = new Size(800, 500);
-            this.StartPosition     = FormStartPosition.CenterParent;
-            this.BackColor         = C(15, 23, 42);
-            this.Font              = UiFont(9F);
-            this.AutoScaleMode     = AutoScaleMode.Dpi;
+            this.Text          = "🌐 Online Program İndir";
+            this.Size          = new Size(1000, 680);
+            this.MinimumSize   = new Size(860, 520);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.BackColor     = C(15, 23, 42);
+            this.Font          = UiFont(9F);
+            this.AutoScaleMode = AutoScaleMode.Dpi;
 
             // ── Header ──────────────────────────────────────────────────
             var header = new Panel
             {
-                Dock = DockStyle.Top, Height = 64,
+                Dock      = DockStyle.Top,
+                Height    = 64,
                 BackColor = C(15, 23, 42),
                 Padding   = new Padding(20, 0, 20, 0)
             };
@@ -253,7 +393,7 @@ namespace AIOInstaller
             };
             var lblSub = new Label
             {
-                Text      = "Katılımsız (sessiz) kurulum destekli popüler uygulamalar",
+                Text      = "Programları indirin, Database klasörüne otomatik kaydedilir",
                 ForeColor = C(148, 163, 184),
                 Font      = UiFont(9F, FontStyle.Italic),
                 AutoSize  = true,
@@ -266,22 +406,21 @@ namespace AIOInstaller
             panelStatus = new Panel
             {
                 Dock      = DockStyle.Bottom,
-                Height    = 60,
+                Height    = 54,
                 BackColor = C(30, 41, 59),
-                Padding   = new Padding(16, 8, 16, 8),
+                Padding   = new Padding(12, 6, 12, 6),
                 Visible   = false
             };
             lblStatus = new Label
             {
-                Dock      = DockStyle.Top,
-                Height    = 18,
+                AutoSize  = false,
                 ForeColor = Color.White,
                 Font      = UiFont(9F, FontStyle.Bold),
-                Text      = ""
+                Text      = "",
+                TextAlign = ContentAlignment.MiddleLeft
             };
             progressBar = new ProgressBar
             {
-                Dock    = DockStyle.Fill,
                 Minimum = 0,
                 Maximum = 100,
                 Value   = 0,
@@ -289,38 +428,45 @@ namespace AIOInstaller
             };
             btnCancelDownload = new Button
             {
-                Text      = "✕ İptal",
-                Size      = new Size(80, 22),
+                Text      = "✕ Durdur",
                 BackColor = C(239, 68, 68),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font      = UiFont(8F, FontStyle.Bold),
+                Font      = UiFont(8.5F, FontStyle.Bold),
                 Cursor    = Cursors.Hand,
-                Dock      = DockStyle.Right
+                Width     = 100
             };
             btnCancelDownload.FlatAppearance.BorderSize = 0;
             btnCancelDownload.Click += (s, e) => cts?.Cancel();
+
+            // TableLayoutPanel: [status label | progress bar | cancel btn]
             var statusLayout = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2,
-                BackColor = Color.Transparent
+                Dock        = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount    = 1,
+                BackColor   = Color.Transparent
             };
+            statusLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
             statusLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            statusLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
-            statusLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
-            statusLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
-            lblStatus.Dock   = DockStyle.Fill;
-            progressBar.Dock = DockStyle.Fill;
+            statusLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+            statusLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            lblStatus.Dock     = DockStyle.Fill;
+            progressBar.Dock   = DockStyle.Fill;
+            btnCancelDownload.Dock = DockStyle.Fill;
+
             statusLayout.Controls.Add(lblStatus,        0, 0);
-            statusLayout.Controls.Add(btnCancelDownload, 1, 0);
-            statusLayout.SetColumnSpan(progressBar, 2);
-            statusLayout.Controls.Add(progressBar, 0, 1);
+            statusLayout.Controls.Add(progressBar,      1, 0);
+            statusLayout.Controls.Add(btnCancelDownload, 2, 0);
+
             panelStatus.Controls.Add(statusLayout);
 
             // ── Left: Categories ─────────────────────────────────────────
             var panelLeft = new Panel
             {
-                Dock = DockStyle.Left, Width = 170,
+                Dock      = DockStyle.Left,
+                Width     = 180,
                 BackColor = C(30, 41, 59),
                 Padding   = new Padding(8)
             };
@@ -335,19 +481,18 @@ namespace AIOInstaller
             };
             listCategories = new ListBox
             {
-                Dock            = DockStyle.Fill,
-                BackColor       = C(30, 41, 59),
-                ForeColor       = Color.White,
-                BorderStyle     = BorderStyle.None,
-                Font            = UiFont(10F, FontStyle.Bold),
-                ItemHeight      = 36,
-                SelectionMode   = SelectionMode.One,
-                DrawMode        = DrawMode.OwnerDrawFixed
+                Dock          = DockStyle.Fill,
+                BackColor     = C(30, 41, 59),
+                ForeColor     = Color.White,
+                BorderStyle   = BorderStyle.None,
+                Font          = UiFont(10F, FontStyle.Bold),
+                ItemHeight    = 36,
+                SelectionMode = SelectionMode.One,
+                DrawMode      = DrawMode.OwnerDrawFixed
             };
-            listCategories.DrawItem    += ListCategories_DrawItem;
+            listCategories.DrawItem             += ListCategories_DrawItem;
             listCategories.SelectedIndexChanged += (s, e) => RefreshAppList();
 
-            // Kategorileri doldur
             var categories = allApps.Select(a => a.Category).Distinct().OrderBy(c => c).ToList();
             categories.Insert(0, "Tümü");
             foreach (var cat in categories)
@@ -359,13 +504,12 @@ namespace AIOInstaller
             // ── Right: App Cards ──────────────────────────────────────────
             panelAppList = new Panel
             {
-                Dock        = DockStyle.Fill,
-                BackColor   = C(15, 23, 42),
-                AutoScroll  = true,
-                Padding     = new Padding(8)
+                Dock       = DockStyle.Fill,
+                BackColor  = C(15, 23, 42),
+                AutoScroll = true,
+                Padding    = new Padding(8)
             };
 
-            // ── Splitter ─────────────────────────────────────────────────
             var splitter = new Splitter
             {
                 Dock      = DockStyle.Left,
@@ -373,7 +517,6 @@ namespace AIOInstaller
                 BackColor = C(51, 65, 85)
             };
 
-            // Controls add order matters for Dock layout
             this.Controls.Add(panelAppList);
             this.Controls.Add(splitter);
             this.Controls.Add(panelLeft);
@@ -387,21 +530,23 @@ namespace AIOInstaller
         private void ListCategories_DrawItem(object sender, DrawItemEventArgs e)
         {
             if (e.Index < 0) return;
-            string text     = listCategories.Items[e.Index].ToString();
-            bool selected   = (e.State & DrawItemState.Selected) != 0;
-            var backColor   = selected ? C(59, 130, 246) : C(30, 41, 59);
-            var foreColor   = selected ? Color.White : C(203, 213, 225);
-            e.Graphics.FillRectangle(new SolidBrush(backColor), e.Bounds);
-            var sf = new System.Drawing.StringFormat { LineAlignment = System.Drawing.StringAlignment.Center };
+            string text   = listCategories.Items[e.Index].ToString();
+            bool selected = (e.State & DrawItemState.Selected) != 0;
+            e.Graphics.FillRectangle(
+                new SolidBrush(selected ? C(59, 130, 246) : C(30, 41, 59)), e.Bounds);
+            var sf = new System.Drawing.StringFormat
+                { LineAlignment = System.Drawing.StringAlignment.Center };
             using (var font = UiFont(10F, selected ? FontStyle.Bold : FontStyle.Regular))
-                e.Graphics.DrawString(text, font, new SolidBrush(foreColor),
-                    new RectangleF(e.Bounds.X + 8, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height), sf);
+                e.Graphics.DrawString(text, font,
+                    new SolidBrush(selected ? Color.White : C(203, 213, 225)),
+                    new RectangleF(e.Bounds.X + 8, e.Bounds.Y,
+                                   e.Bounds.Width - 8, e.Bounds.Height), sf);
         }
 
         // ─── Refresh right panel ──────────────────────────────────────────
         private void RefreshAppList()
         {
-            string cat = listCategories.SelectedItem?.ToString() ?? "Tümü";
+            string cat  = listCategories.SelectedItem?.ToString() ?? "Tümü";
             var filtered = cat == "Tümü"
                 ? allApps
                 : allApps.Where(a => a.Category == cat).ToList();
@@ -409,10 +554,11 @@ namespace AIOInstaller
             panelAppList.SuspendLayout();
             panelAppList.Controls.Clear();
 
-            // Build cards from bottom (so they stack top→down when added at Top)
             for (int i = filtered.Count - 1; i >= 0; i--)
                 panelAppList.Controls.Add(BuildAppCard(filtered[i]));
 
+            // Scroll en üste dönsün
+            panelAppList.AutoScrollPosition = new Point(0, 0);
             panelAppList.ResumeLayout();
         }
 
@@ -422,14 +568,12 @@ namespace AIOInstaller
             var card = new Panel
             {
                 Dock      = DockStyle.Top,
-                Height    = 70,
+                Height    = 72,
                 BackColor = C(30, 41, 59),
-                Margin    = new Padding(0, 0, 0, 4),
                 Padding   = new Padding(12, 8, 12, 8),
                 Cursor    = Cursors.Default
             };
 
-            // Colored left bar
             var bar = new Panel
             {
                 Dock      = DockStyle.Left,
@@ -437,17 +581,16 @@ namespace AIOInstaller
                 BackColor = C(59, 130, 246)
             };
 
-            // Icon label
             var lblIcon = new Label
             {
                 Text      = app.IconEmoji,
                 Font      = UiFont(20F),
                 ForeColor = Color.White,
                 Size      = new Size(44, 54),
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                Location  = new Point(10, 9)
             };
 
-            // Name + description
             var lblName = new Label
             {
                 Text      = app.Name,
@@ -470,152 +613,136 @@ namespace AIOInstaller
                 ForeColor = C(100, 116, 139),
                 Font      = UiFont(8F),
                 AutoSize  = true,
-                Location  = new Point(61, 48)
+                Location  = new Point(61, 50)
             };
 
-            // Download button
             var btn = new Button
             {
-                Text      = "⬇ İndir & Kur",
-                Size      = new Size(120, 36),
-                BackColor = C(16, 185, 129),
+                Text      = "⬇ İndir",
+                Size      = new Size(110, 38),
+                BackColor = C(59, 130, 246),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font      = UiFont(9F, FontStyle.Bold),
+                Font      = UiFont(9.5F, FontStyle.Bold),
                 Cursor    = Cursors.Hand,
                 Anchor    = AnchorStyles.Top | AnchorStyles.Right
             };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = C(52, 211, 153);
-            btn.FlatAppearance.MouseDownBackColor = C(5, 150, 105);
+            btn.FlatAppearance.BorderSize          = 0;
+            btn.FlatAppearance.MouseOverBackColor  = C(96, 165, 250);
+            btn.FlatAppearance.MouseDownBackColor  = C(37, 99, 235);
 
-            // Position btn on right - use Resize to keep it anchored
-            void PositionBtn()
-            {
-                btn.Location = new Point(card.ClientSize.Width - btn.Width - 16,
-                                         (card.ClientSize.Height - btn.Height) / 2);
-            }
+            void PositionBtn() => btn.Location = new Point(
+                card.ClientSize.Width - btn.Width - 14,
+                (card.ClientSize.Height - btn.Height) / 2);
             card.Resize += (s, e) => PositionBtn();
 
-            // Capture for lambda
-            OnlineApp capturedApp = app;
-            btn.Click += async (s, e) => await DownloadAndInstallAsync(capturedApp, btn);
+            OnlineApp captured = app;
+            btn.Click += async (s, e) => await DownloadToDatabaseAsync(captured, btn);
 
-            lblIcon.Location = new Point(8, 8);
             card.Controls.Add(btn);
             card.Controls.Add(lblMeta);
             card.Controls.Add(lblDesc);
             card.Controls.Add(lblName);
             card.Controls.Add(lblIcon);
             card.Controls.Add(bar);
-
-            // Trigger initial positioning
             card.PerformLayout();
-
             return card;
         }
 
-        // ─── Download + Silent Install ────────────────────────────────────
-        private async Task DownloadAndInstallAsync(OnlineApp app, Button triggerBtn)
+        // ─── Download to Database folder ─────────────────────────────────
+        private async Task DownloadToDatabaseAsync(OnlineApp app, Button triggerBtn)
         {
             if (cts != null && !cts.IsCancellationRequested)
             {
-                MessageBox.Show("Başka bir indirme işlemi devam ediyor. Lütfen bekleyin veya iptal edin.",
+                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
                     "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            // Database klasörü oluştur
+            if (!Directory.Exists(DatabaseDir))
+                Directory.CreateDirectory(DatabaseDir);
+
+            // Dosya uzantısı algıla
+            string url = app.DownloadUrl;
+            string ext = ".exe";
+            if (url.IndexOf(".msi", StringComparison.OrdinalIgnoreCase) >= 0)
+                ext = ".msi";
+            else if (url.IndexOf(".zip", StringComparison.OrdinalIgnoreCase) >= 0)
+                ext = ".zip";
+
+            // Güvenli dosya adı
+            string safeName = string.Join("_",
+                app.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+            string destFile = Path.Combine(DatabaseDir, safeName + ext);
+
             cts = new CancellationTokenSource();
             var token = cts.Token;
 
-            // Disable all download buttons while downloading
             SetAllDownloadButtonsEnabled(false);
-            panelStatus.Visible  = true;
-            progressBar.Value    = 0;
-            lblStatus.Text       = $"Hazırlanıyor: {app.Name}...";
-
-            string tempFile = Path.Combine(Path.GetTempPath(), $"AIOOnline_{Guid.NewGuid():N}.exe");
+            panelStatus.Visible = true;
+            progressBar.Style   = ProgressBarStyle.Continuous;
+            progressBar.Value   = 0;
+            lblStatus.Text      = $"Hazırlanıyor: {app.Name}…";
 
             try
             {
-                // ── Download ──────────────────────────────────────────────
                 using (var wc = new WebClient())
                 {
                     wc.DownloadProgressChanged += (s, e) =>
                     {
-                        if (progressBar.IsHandleCreated)
-                            progressBar.BeginInvoke((Action)(() =>
-                            {
-                                progressBar.Value = e.ProgressPercentage;
-                                long totalMB = e.TotalBytesToReceive > 0
-                                    ? e.TotalBytesToReceive / (1024 * 1024) : 0;
-                                long dlMB   = e.BytesReceived / (1024 * 1024);
-                                lblStatus.Text = totalMB > 0
-                                    ? $"İndiriliyor: {app.Name}  —  {dlMB} MB / {totalMB} MB"
-                                    : $"İndiriliyor: {app.Name}  —  {dlMB} MB";
-                            }));
+                        if (!progressBar.IsHandleCreated) return;
+                        progressBar.BeginInvoke((Action)(() =>
+                        {
+                            progressBar.Value = Math.Min(e.ProgressPercentage, 100);
+                            long total = e.TotalBytesToReceive > 0
+                                ? e.TotalBytesToReceive / (1024 * 1024) : 0;
+                            long done  = e.BytesReceived / (1024 * 1024);
+                            lblStatus.Text = total > 0
+                                ? $"⬇ {app.Name}  —  {done} MB / {total} MB"
+                                : $"⬇ {app.Name}  —  {done} MB";
+                        }));
                     };
 
                     token.Register(() => wc.CancelAsync());
 
-                    await wc.DownloadFileTaskAsync(new Uri(app.DownloadUrl), tempFile);
+                    await wc.DownloadFileTaskAsync(new Uri(url), destFile);
                 }
-
-                if (token.IsCancellationRequested)
-                {
-                    lblStatus.Text = "İndirme iptal edildi.";
-                    return;
-                }
-
-                // ── Silent Install ────────────────────────────────────────
-                lblStatus.Text    = $"Kuruluyor: {app.Name}...";
-                progressBar.Style = ProgressBarStyle.Marquee;
-
-                await Task.Run(() =>
-                {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName        = tempFile,
-                        Arguments       = app.SilentArgs ?? "",
-                        UseShellExecute = true,
-                        Verb            = "runas"
-                    };
-                    var proc = Process.Start(psi);
-                    proc?.WaitForExit();
-                }, token);
 
                 if (!token.IsCancellationRequested)
                 {
-                    lblStatus.Text    = $"✅ {app.Name} başarıyla kuruldu!";
-                    progressBar.Style = ProgressBarStyle.Continuous;
+                    lblStatus.Text    = $"✅ {app.Name} → Database klasörüne kaydedildi";
                     progressBar.Value = 100;
-                    MessageBox.Show($"{app.Name} başarıyla indirildi ve kuruldu!",
-                        "Kurulum Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        $"{app.Name} başarıyla indirildi!\n\nKonum: {destFile}\n\nProgramı çalıştırmak için Database klasörünü açın.",
+                        "İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    lblStatus.Text = "⛔ İndirme durduruldu.";
+                    try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
                 }
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
-                progressBar.Style = ProgressBarStyle.Continuous;
                 progressBar.Value = 0;
                 lblStatus.Text    = $"❌ Hata: {ex.Message}";
                 if (!token.IsCancellationRequested)
-                    MessageBox.Show($"İndirme/kurulum sırasında hata oluştu:\n{ex.Message}",
+                    MessageBox.Show(
+                        $"İndirme sırasında hata:\n{ex.Message}",
                         "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
             }
             finally
             {
-                // Cleanup temp file
-                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
-
                 cts?.Dispose();
                 cts = null;
 
                 progressBar.Style = ProgressBarStyle.Continuous;
                 SetAllDownloadButtonsEnabled(true);
 
-                // Hide status bar after a short delay if successful
-                await Task.Delay(3000);
-                if (cts == null) // no new download started
+                await Task.Delay(4000);
+                if (cts == null)
                     panelStatus.Visible = false;
             }
         }
