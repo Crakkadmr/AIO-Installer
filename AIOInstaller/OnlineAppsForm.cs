@@ -21,14 +21,18 @@ namespace AIOInstaller
         private ProgressBar progressBar;
         private Button      btnCancelDownload;
         private Label       lblHeader;
+        private TextBox     txtSearch;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, string lp);
 
         // ─── State ────────────────────────────────────────────────────────
         private List<OnlineApp>         allApps;
         private CancellationTokenSource cts;
 
-        // ─── Database klasör yolu ─────────────────────────────────────────
+        // ─── programlar klasör yolu ─────────────────────────────────────────
         private static readonly string DatabaseDir = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "Database");
+            AppDomain.CurrentDomain.BaseDirectory, "programlar");
 
         // ─── Font/Color helpers ──────────────────────────────────────────
         private static Font UiFont(float size, FontStyle style = FontStyle.Regular)
@@ -352,6 +356,17 @@ namespace AIOInstaller
             new OnlineApp("Blender", "3D modelleme ve animasyon yazılımı",
                 "Grafik", "https://download.blender.org/release/Blender4.1/blender-4.1.0-windows-x64.msi",
                 "/quiet /norestart", "4.1.0", "~700 MB", "🦴"),
+
+            // ── Sistem ───────────────────────────────────────────
+            new OnlineApp(".NET Desktop Runtime 8", "Gerekli .NET kütüphaneleri",
+                "Sistem", "https://download.visualstudio.microsoft.com/download/pr/49ebc904-8bde-40db-9fc0-097561deca8b/3028d0026eaf1cfdfbba8b79ebdefcd3/windowsdesktop-runtime-8.0.3-win-x64.exe",
+                "/install /quiet /norestart", "8.0", "~55 MB", "⚙️"),
+            new OnlineApp("DirectX", "Microsoft DirectX End-User Runtime",
+                "Sistem", "https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe",
+                "/Q", "Son", "~1 MB", "🎮"),
+            new OnlineApp("Visual C++ Redistributable", "AIO Repack (Tüm VC++ sürümleri)",
+                "Sistem", "https://github.com/abbodi1406/vcredist/releases/download/v0.79.0/VisualCppRedist_AIO_x86_x64.exe",
+                "/y", "Son", "~30 MB", "🧩"),
         };
 
         // ─── Constructor ────────────────────────────────────────────────
@@ -393,7 +408,7 @@ namespace AIOInstaller
             };
             var lblSub = new Label
             {
-                Text      = "Programları indirin, Database klasörüne otomatik kaydedilir",
+                Text      = "Programları indirin, programlar klasörüne otomatik kaydedilir",
                 ForeColor = C(148, 163, 184),
                 Font      = UiFont(9F, FontStyle.Italic),
                 AutoSize  = true,
@@ -501,14 +516,42 @@ namespace AIOInstaller
             panelLeft.Controls.Add(listCategories);
             panelLeft.Controls.Add(lblCatTitle);
 
-            // ── Right: App Cards ──────────────────────────────────────────
+            // ── Right: Search + App Cards ─────────────────────────────────
+            var panelRight = new Panel
+            {
+                Dock       = DockStyle.Fill,
+                BackColor  = C(15, 23, 42)
+            };
+
+            var panelSearch = new Panel
+            {
+                Dock       = DockStyle.Top,
+                Height     = 55,
+                Padding    = new Padding(10, 15, 10, 5) // Sol, Üst, Sağ, Alt
+            };
+            
+            txtSearch = new TextBox
+            {
+                Dock        = DockStyle.Fill,
+                Font        = UiFont(12F),
+                BackColor   = C(30, 41, 59),
+                ForeColor   = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            SendMessage(txtSearch.Handle, 0x1501, IntPtr.Zero, "🔍 Uygulama Ara...");
+            txtSearch.TextChanged += (s, e) => RefreshAppList();
+            
+            panelSearch.Controls.Add(txtSearch);
+
             panelAppList = new Panel
             {
                 Dock       = DockStyle.Fill,
-                BackColor  = C(15, 23, 42),
                 AutoScroll = true,
                 Padding    = new Padding(8)
             };
+
+            panelRight.Controls.Add(panelAppList);
+            panelRight.Controls.Add(panelSearch);
 
             var splitter = new Splitter
             {
@@ -517,7 +560,7 @@ namespace AIOInstaller
                 BackColor = C(51, 65, 85)
             };
 
-            this.Controls.Add(panelAppList);
+            this.Controls.Add(panelRight);
             this.Controls.Add(splitter);
             this.Controls.Add(panelLeft);
             this.Controls.Add(panelStatus);
@@ -547,9 +590,12 @@ namespace AIOInstaller
         private void RefreshAppList()
         {
             string cat  = listCategories.SelectedItem?.ToString() ?? "Tümü";
-            var filtered = cat == "Tümü"
-                ? allApps
-                : allApps.Where(a => a.Category == cat).ToList();
+            string search = txtSearch?.Text?.ToLowerInvariant() ?? "";
+            
+            var filtered = allApps.Where(a => 
+                (cat == "Tümü" || a.Category == cat) &&
+                (string.IsNullOrWhiteSpace(search) || a.Name.ToLowerInvariant().Contains(search) || a.Description.ToLowerInvariant().Contains(search))
+            ).ToList();
 
             panelAppList.SuspendLayout();
             panelAppList.Controls.Clear();
@@ -557,9 +603,15 @@ namespace AIOInstaller
             for (int i = filtered.Count - 1; i >= 0; i--)
                 panelAppList.Controls.Add(BuildAppCard(filtered[i]));
 
-            // Scroll en üste dönsün
-            panelAppList.AutoScrollPosition = new Point(0, 0);
-            panelAppList.ResumeLayout();
+            panelAppList.ResumeLayout(true);
+
+            // Scroll sorununu düzelt: Eklenen son eleman odak alıp ekranı aşağı kaydırmasın
+            if (this.IsHandleCreated)
+            {
+                this.BeginInvoke(new Action(() => {
+                    panelAppList.AutoScrollPosition = new Point(0, 0);
+                }));
+            }
         }
 
         // ─── Build a single card ──────────────────────────────────────────
@@ -649,7 +701,7 @@ namespace AIOInstaller
             return card;
         }
 
-        // ─── Download to Database folder ─────────────────────────────────
+        // ─── Download to programlar folder ─────────────────────────────────
         private async Task DownloadToDatabaseAsync(OnlineApp app, Button triggerBtn)
         {
             if (cts != null && !cts.IsCancellationRequested)
@@ -659,7 +711,7 @@ namespace AIOInstaller
                 return;
             }
 
-            // Database klasörü oluştur
+            // programlar klasörü oluştur
             if (!Directory.Exists(DatabaseDir))
                 Directory.CreateDirectory(DatabaseDir);
 
@@ -711,10 +763,10 @@ namespace AIOInstaller
 
                 if (!token.IsCancellationRequested)
                 {
-                    lblStatus.Text    = $"✅ {app.Name} → Database klasörüne kaydedildi";
+                    lblStatus.Text    = $"✅ {app.Name} → programlar klasörüne kaydedildi";
                     progressBar.Value = 100;
                     MessageBox.Show(
-                        $"{app.Name} başarıyla indirildi!\n\nKonum: {destFile}\n\nProgramı çalıştırmak için Database klasörünü açın.",
+                        $"{app.Name} başarıyla indirildi!\n\nKonum: {destFile}\n\nProgramı çalıştırmak için programlar klasörünü açın.",
                         "İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else

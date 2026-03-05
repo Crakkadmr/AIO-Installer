@@ -13,12 +13,12 @@ namespace AIOInstaller
     /// </summary>
     public class ProgramManager
     {
-        public static string DatabaseFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Database");
+        public static string DatabaseFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "programlar");
         private static string ProgramsXmlFile = Path.Combine(DatabaseFolder, "Programs.xml");
         private static string ProgramsListFile = Path.Combine(DatabaseFolder, "ProgramsList.xml");
 
         /// <summary>
-        /// Database klasörünü oluşturur
+        /// programlar klasörünü oluşturur
         /// </summary>
         public static void InitializeDatabase()
         {
@@ -365,7 +365,7 @@ namespace AIOInstaller
         }
 
         /// <summary>
-        /// Database klasörünün yolunu döndürür
+        /// programlar klasörünün yolunu döndürür
         /// </summary>
         public static string GetDatabaseFolder()
         {
@@ -373,7 +373,7 @@ namespace AIOInstaller
         }
 
         /// <summary>
-        /// Database klasörünü tarar ve XML listesiyle senkronize eder
+        /// programlar klasörünü tarar ve XML listesiyle senkronize eder
         /// </summary>
         public static (int added, int removed) SyncDatabase()
         {

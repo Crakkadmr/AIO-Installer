@@ -52,6 +52,12 @@ namespace AIOInstaller
         private Button btnOpenDatabase;
         private Button btnSync;
         private Button btnDownload;
+        private Button btnActivate;
+        private Button btnPowerShell;
+        private Button btnDefenderOff;
+        private Button btnDefenderOn;
+        private Button btnUpdateBlock;
+        private Button btnUpdateAllow;
         private Label lblCredit;
         private Label lblTotalCount;
 
@@ -76,9 +82,9 @@ namespace AIOInstaller
 
             // Form ayarları - Modern görünüm
             this.Text = "AIO INSTALLER V1.0";
-            this.Size = new Size(1100, 680);
+            this.Size = new Size(932, 821);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.MinimumSize = new Size(900, 550);
+            this.MinimumSize = new Size(750, 600);
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.BackColor = C(15, 23, 42);
             this.Font = UiFont(9F, FontStyle.Regular);
@@ -197,31 +203,13 @@ namespace AIOInstaller
             {
                 Name = ColName,
                 HeaderText = "💻 Program Adı",
-                Width = 200,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            };
-
-            var colDescription = new DataGridViewTextBoxColumn
-            {
-                Name = ColDescription,
-                HeaderText = "Açıklama",
+                Width = 320,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 100,
                 ReadOnly = true,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             };
 
-            var colVersion = new DataGridViewTextBoxColumn
-            {
-                Name = ColVersion,
-                HeaderText = "Versiyon",
-                Width = 75,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            };
+
 
             var colSize = new DataGridViewTextBoxColumn
             {
@@ -255,53 +243,20 @@ namespace AIOInstaller
 
             gridPrograms.Columns.AddRange(new DataGridViewColumn[]
             {
-                colSelect, colName, colDescription, colVersion, colSize, colAdded, colStatus
+                colSelect, colName, colSize, colAdded, colStatus
             });
 
             gridPrograms.CurrentCellDirtyStateChanged += GridPrograms_CurrentCellDirtyStateChanged;
             gridPrograms.CellDoubleClick += GridPrograms_CellDoubleClick;
 
-            // Seçim butonları paneli - Dark modern
-            Panel selectionPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 55,
-                BackColor = C(30, 41, 59),
-                Padding = new Padding(15, 10, 15, 10)
-            };
-
-            // Seçim butonları için FlowLayout
-            var selectionFlow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                BackColor = Color.Transparent,
-                Padding = new Padding(0)
-            };
-
-            btnSelectAll = CreateToolButton("✔ Tümünü Seç", C(16, 185, 129));
-            btnSelectAll.Click += BtnSelectAll_Click;
-
-            btnDeselectAll = CreateToolButton("✕ Seçimi Kaldır", C(100, 116, 139));
-            btnDeselectAll.Click += BtnDeselectAll_Click;
-
-            btnInstallSelected = CreateToolButton("▶ Seçilenleri Kur", C(59, 130, 246));
-            btnInstallSelected.Click += BtnInstallSelected_Click;
-
-            selectionFlow.Controls.Add(btnSelectAll);
-            selectionFlow.Controls.Add(btnDeselectAll);
-            selectionFlow.Controls.Add(btnInstallSelected);
-            selectionPanel.Controls.Add(selectionFlow);
-
-            // Kurulum durum paneli (progress bar) - Yükseklik artırıldı, boşluklar düzenlendi
+            // Kurulum durum paneli (progress bar)
             installStatusPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 85, // 52'den 85'e çıkarıldı
+                Height = 85,
                 Padding = new Padding(20, 12, 20, 12),
                 BackColor = Color.White,
-                BorderStyle = BorderStyle.None, // Daha temiz görünüm için border kaldırıldı
+                BorderStyle = BorderStyle.None,
                 Visible = false
             };
 
@@ -346,9 +301,9 @@ namespace AIOInstaller
                 BackColor = Color.Transparent
             };
             installLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            installLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // Buton genişliği
-            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // Label satırı
-            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // ProgressBar satırı
+            installLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
 
             lblInstallStatus.Dock = DockStyle.Fill;
             btnStopInstall.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -360,60 +315,177 @@ namespace AIOInstaller
 
             installStatusPanel.Controls.Add(installLayout);
 
-            // Butonlar için Panel - Dark modern
-            Panel buttonPanel = new Panel
+            // ══════════════════════════════════════════════════════════════════
+            // Sağ taraf: Kategorili buton paneli
+            // ══════════════════════════════════════════════════════════════════
+            Panel rightPanel = new Panel
             {
-                Dock = DockStyle.Bottom,
-                Height = 65,
-                BackColor = C(15, 23, 42),
+                Dock = DockStyle.Right,
+                Width = 175,
+                BackColor = C(20, 27, 45),
                 Padding = new Padding(0)
             };
 
-            // FlowLayoutPanel ile butonları otomatik hizala
-            var buttonFlow = new FlowLayoutPanel
+            // İnce ayırıcı çizgi (sol kenar)
+            var separator = new Panel
             {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                BackColor = Color.Transparent,
-                Padding = new Padding(10, 10, 10, 10),
-                AutoScroll = false
+                Dock = DockStyle.Left,
+                Width = 2,
+                BackColor = C(59, 130, 246)
             };
 
-            btnAdd = CreateModernButton("➕ Program Ekle", C(16, 185, 129));
+            // Butonların yerleşeceği FlowLayoutPanel (dikey)
+            var sideFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                BackColor = Color.Transparent,
+                Padding = new Padding(10, 8, 10, 8)
+            };
+
+            // ── Yardımcı: Kategori başlığı oluştur
+            Func<string> lastCat = () => "";
+            Action<FlowLayoutPanel, string> addCategoryLabel = (flow, text) =>
+            {
+                var lbl = new Label
+                {
+                    Text = text.ToUpperInvariant(),
+                    ForeColor = C(100, 116, 139),
+                    Font = UiFont(7.5F, FontStyle.Bold),
+                    AutoSize = false,
+                    Width = 150,
+                    Height = 22,
+                    TextAlign = ContentAlignment.BottomLeft,
+                    Margin = new Padding(0, 6, 0, 2)
+                };
+                flow.Controls.Add(lbl);
+
+                // İnce ayırıcı
+                var line = new Panel
+                {
+                    Width = 150,
+                    Height = 1,
+                    BackColor = C(51, 65, 85),
+                    Margin = new Padding(0, 0, 0, 4)
+                };
+                flow.Controls.Add(line);
+            };
+
+            // ── Yardımcı: Yan panel butonu oluştur
+            Func<string, Color, Button> createSideButton = (text, color) =>
+            {
+                var btn = new Button
+                {
+                    Text = text,
+                    Size = new Size(150, 34),
+                    BackColor = color,
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = UiFont(8.5F, FontStyle.Bold),
+                    Cursor = Cursors.Hand,
+                    Margin = new Padding(0, 2, 0, 2),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(
+                    Math.Min(255, color.R + 30),
+                    Math.Min(255, color.G + 30),
+                    Math.Min(255, color.B + 30));
+                btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(
+                    Math.Max(0, color.R - 30),
+                    Math.Max(0, color.G - 30),
+                    Math.Max(0, color.B - 30));
+                return btn;
+            };
+
+            // ── Kategori: SEÇİM ──
+            addCategoryLabel(sideFlow, "📋 Seçim");
+
+            btnSelectAll = createSideButton("✔ Tümünü Seç", C(16, 185, 129));
+            btnSelectAll.Click += BtnSelectAll_Click;
+            sideFlow.Controls.Add(btnSelectAll);
+
+            btnDeselectAll = createSideButton("✕ Seçimi Kaldır", C(100, 116, 139));
+            btnDeselectAll.Click += BtnDeselectAll_Click;
+            sideFlow.Controls.Add(btnDeselectAll);
+
+            btnInstallSelected = createSideButton("▶ Seçilenleri Kur", C(59, 130, 246));
+            btnInstallSelected.Click += BtnInstallSelected_Click;
+            sideFlow.Controls.Add(btnInstallSelected);
+
+            // ── Kategori: PROGRAM ──
+            addCategoryLabel(sideFlow, "💻 Program");
+
+            btnAdd = createSideButton("➕ Program Ekle", C(16, 185, 129));
             btnAdd.Click += BtnAdd_Click;
+            sideFlow.Controls.Add(btnAdd);
 
-            btnInstall = CreateModernButton("▶ Kur", C(59, 130, 246));
+            btnInstall = createSideButton("▶ Kur", C(59, 130, 246));
             btnInstall.Click += BtnInstall_Click;
+            sideFlow.Controls.Add(btnInstall);
 
-            btnRemove = CreateModernButton("🗑 Sil", C(239, 68, 68));
+            btnRemove = createSideButton("🗑 Sil", C(239, 68, 68));
             btnRemove.Click += BtnRemove_Click;
+            sideFlow.Controls.Add(btnRemove);
 
-            btnOpenDatabase = CreateModernButton("📂 Klasör", C(124, 58, 237));
+            // ── Kategori: DOSYA ──
+            addCategoryLabel(sideFlow, "📁 Dosya");
+
+            btnOpenDatabase = createSideButton("📂 Klasör Aç", C(124, 58, 237));
             btnOpenDatabase.Click += BtnOpenDatabase_Click;
+            sideFlow.Controls.Add(btnOpenDatabase);
 
-            btnSync = CreateModernButton("🔄 Yenile", C(245, 158, 11));
+            btnSync = createSideButton("🔄 Yenile", C(245, 158, 11));
             btnSync.Click += BtnSync_Click;
+            sideFlow.Controls.Add(btnSync);
 
-            btnDownload = CreateModernButton("🌐 İndir", C(124, 58, 237));
+            btnDownload = createSideButton("🌐 İndir", C(124, 58, 237));
             btnDownload.Click += BtnDownload_Click;
+            sideFlow.Controls.Add(btnDownload);
 
-            buttonFlow.Controls.Add(btnAdd);
-            buttonFlow.Controls.Add(btnInstall);
-            buttonFlow.Controls.Add(btnRemove);
-            buttonFlow.Controls.Add(btnOpenDatabase);
-            buttonFlow.Controls.Add(btnSync);
-            buttonFlow.Controls.Add(btnDownload);
+            // ── Kategori: ARAÇLAR ──
+            addCategoryLabel(sideFlow, "🔧 Araçlar");
 
-            buttonPanel.Controls.Add(buttonFlow);
+            btnActivate = createSideButton("🔑 Etkinleştir", C(220, 38, 38));
+            btnActivate.Click += BtnActivate_Click;
+            sideFlow.Controls.Add(btnActivate);
 
-            // WinForms Dock kuralı: Bottom paneller önce, sonra Top paneller ters sırayla, Fill en son
-            // Bu sıra kesinlikle değiştirilmemeli!
-            this.Controls.Add(gridPrograms);        // Fill - en son eklenen Fill en önce işlenir
-            this.Controls.Add(selectionPanel);      // Top - 2. sıradan eklenen
-            this.Controls.Add(headerPanel);         // Top - son eklenen Top en üste yerleşir
+            btnPowerShell = createSideButton("⚡ PowerShell", C(0, 120, 212));
+            btnPowerShell.Click += BtnPowerShell_Click;
+            sideFlow.Controls.Add(btnPowerShell);
+
+            // ── Kategori: GÜVENLİK ──
+            addCategoryLabel(sideFlow, "🛡️ Güvenlik");
+
+            btnDefenderOff = createSideButton("🛡️ Defender Kapat", C(180, 30, 30));
+            btnDefenderOff.Click += BtnDefenderOff_Click;
+            sideFlow.Controls.Add(btnDefenderOff);
+
+            btnDefenderOn = createSideButton("✅ Defender Aç", C(16, 130, 60));
+            btnDefenderOn.Click += BtnDefenderOn_Click;
+            sideFlow.Controls.Add(btnDefenderOn);
+
+            // ── Kategori: WINDOWS UPDATE ──
+            addCategoryLabel(sideFlow, "🔄 Windows Update");
+
+            btnUpdateBlock = createSideButton("⛔ Update Engelle", C(180, 80, 0));
+            btnUpdateBlock.Click += BtnUpdateBlock_Click;
+            sideFlow.Controls.Add(btnUpdateBlock);
+
+            btnUpdateAllow = createSideButton("✅ Update Aç", C(16, 130, 60));
+            btnUpdateAllow.Click += BtnUpdateAllow_Click;
+            sideFlow.Controls.Add(btnUpdateAllow);
+
+            rightPanel.Controls.Add(sideFlow);
+            rightPanel.Controls.Add(separator);
+
+            // WinForms Dock kuralı: Right panel, Bottom paneller, Top paneller, Fill en son
+            this.Controls.Add(gridPrograms);        // Fill
+            this.Controls.Add(headerPanel);         // Top
             this.Controls.Add(installStatusPanel);  // Bottom
-            this.Controls.Add(buttonPanel);         // Bottom - son eklenen Bottom en alta yerleşir
+            this.Controls.Add(rightPanel);          // Right
 
             this.ResumeLayout(false);
         }
@@ -517,8 +589,6 @@ namespace AIOInstaller
                     int idx = gridPrograms.Rows.Add(
                         false,
                         program.Name ?? "(isimsiz)",
-                        program.Description ?? "",
-                        program.Version ?? "",
                         ProgramManager.FormatFileSize(program.FileSize),
                         program.AddedDate.ToString("dd.MM.yyyy HH:mm"),
                         fileExists ? "Bekliyor" : "⚠ Dosya Yok"
@@ -543,7 +613,7 @@ namespace AIOInstaller
 
             if (programs.Count == 0)
             {
-                int idx = gridPrograms.Rows.Add(false, "Henüz program eklenmemiş", "Program eklemek için 'Program Ekle' butonuna tıklayın", "", "", "", "");
+                int idx = gridPrograms.Rows.Add(false, "Henüz program eklenmemiş", "", "", "");
                 var row = gridPrograms.Rows[idx];
                 row.ReadOnly = true;
                 row.DefaultCellStyle.ForeColor = C(100, 116, 139);
@@ -884,6 +954,12 @@ namespace AIOInstaller
             btnOpenDatabase.Enabled = enabled;
             btnSync.Enabled = enabled;
             btnDownload.Enabled = enabled;
+            btnActivate.Enabled = enabled;
+            btnPowerShell.Enabled = enabled;
+            btnDefenderOff.Enabled = enabled;
+            btnDefenderOn.Enabled = enabled;
+            btnUpdateBlock.Enabled = enabled;
+            btnUpdateAllow.Enabled = enabled;
         }
 
         private void BtnDownload_Click(object sender, EventArgs e)
@@ -1033,8 +1109,171 @@ namespace AIOInstaller
             }
             else
             {
-                MessageBox.Show("Database klasörü bulunamadı!", "Hata", 
+                MessageBox.Show("programlar klasörü bulunamadı!", "Hata", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnActivate_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "Microsoft Activation Scripts (MAS) çalıştırılacak.\n\n" +
+                "Bu araç Windows ve Office etkinleştirmesi yapar.\n" +
+                "Kaynak: massgrave.dev\n\n" +
+                "Devam etmek istiyor musunuz?",
+                "Windows/Office Etkinleştirme",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = "-ExecutionPolicy Bypass -Command \"irm https://get.activated.win | iex\"",
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+                    Process.Start(startInfo);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Etkinleştirme başlatılamadı: {ex.Message}", "Hata",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void BtnPowerShell_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                "Aşağıdaki SMB yapılandırma komutları yönetici olarak çalıştırılacak:\n\n" +
+                "• Set-SmbClientConfiguration -EnableInsecureGuestLogons $true\n" +
+                "• Set-SmbClientConfiguration -RequireSecuritySignature $false\n" +
+                "• Set-SmbServerConfiguration -RequireSecuritySignature $false\n\n" +
+                "Devam etmek istiyor musunuz?",
+                "PowerShell SMB Ayarları",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                RunPowerShellAsAdmin(
+                    "Set-SmbClientConfiguration -EnableInsecureGuestLogons $true -Force\r\n" +
+                    "Set-SmbClientConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                    "Set-SmbServerConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                    "Set-SmbClientConfiguration -EnableInsecureGuestLogons $true -Force\r\n" +
+                    "Set-SmbClientConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                    "Set-SmbServerConfiguration -RequireSecuritySignature $false -Force",
+                    "SMB ayarları uygulama");
+            }
+        }
+
+        private void BtnDefenderOff_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                "Windows Defender Gerçek Zamanlı Koruma KAPATILACAK.\n\nDevam etmek istiyor musunuz?",
+                "Defender Kapat", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            {
+                RunPowerShellAsAdmin(
+                    "Set-MpPreference -DisableRealtimeMonitoring $true -Force\r\n" +
+                    "Set-MpPreference -DisableBehaviorMonitoring $true -Force\r\n" +
+                    "Set-MpPreference -DisableIOAVProtection $true -Force\r\n" +
+                    "Set-MpPreference -DisablePrivacyMode $true -Force\r\n" +
+                    "Set-MpPreference -SignatureDisableUpdateOnStartupWithoutEngine $true -Force\r\n" +
+                    "Set-MpPreference -DisableArchiveScanning $true -Force\r\n" +
+                    "Set-MpPreference -DisableIntrusionPreventionSystem $true -Force\r\n" +
+                    "Set-MpPreference -DisableScriptScanning $true -Force",
+                    "Defender kapatma");
+            }
+        }
+
+        private void BtnDefenderOn_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                "Windows Defender Gerçek Zamanlı Koruma AÇILACAK.\n\nDevam etmek istiyor musunuz?",
+                "Defender Aç", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                RunPowerShellAsAdmin(
+                    "Set-MpPreference -DisableRealtimeMonitoring $false -Force\r\n" +
+                    "Set-MpPreference -DisableBehaviorMonitoring $false -Force\r\n" +
+                    "Set-MpPreference -DisableIOAVProtection $false -Force\r\n" +
+                    "Set-MpPreference -DisablePrivacyMode $false -Force\r\n" +
+                    "Set-MpPreference -SignatureDisableUpdateOnStartupWithoutEngine $false -Force\r\n" +
+                    "Set-MpPreference -DisableArchiveScanning $false -Force\r\n" +
+                    "Set-MpPreference -DisableIntrusionPreventionSystem $false -Force\r\n" +
+                    "Set-MpPreference -DisableScriptScanning $false -Force",
+                    "Defender açma");
+            }
+        }
+
+        private void BtnUpdateBlock_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                "Windows Update ENGELLENECEK.\nGüncellemeler devre dışı bırakılacak.\n\nDevam etmek istiyor musunuz?",
+                "Update Engelle", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            {
+                RunPowerShellAsAdmin(
+                    "Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue\r\n" +
+                    "Set-Service -Name wuauserv -StartupType Disabled\r\n" +
+                    "Stop-Service -Name UsoSvc -Force -ErrorAction SilentlyContinue\r\n" +
+                    "Set-Service -Name UsoSvc -StartupType Disabled\r\n" +
+                    "Stop-Service -Name bits -Force -ErrorAction SilentlyContinue\r\n" +
+                    "Set-Service -Name bits -StartupType Disabled",
+                    "Update engelleme");
+            }
+        }
+
+        private void BtnUpdateAllow_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                "Windows Update ETKINLEŞTIRILECEK.\nGüncellemeler tekrar çalışmaya başlayacak.\n\nDevam etmek istiyor musunuz?",
+                "Update Aç", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                RunPowerShellAsAdmin(
+                    "Set-Service -Name wuauserv -StartupType Automatic\r\n" +
+                    "Start-Service -Name wuauserv -ErrorAction SilentlyContinue\r\n" +
+                    "Set-Service -Name UsoSvc -StartupType Automatic\r\n" +
+                    "Start-Service -Name UsoSvc -ErrorAction SilentlyContinue\r\n" +
+                    "Set-Service -Name bits -StartupType Automatic\r\n" +
+                    "Start-Service -Name bits -ErrorAction SilentlyContinue",
+                    "Update açma");
+            }
+        }
+
+        private void RunPowerShellAsAdmin(string scriptContent, string actionName)
+        {
+            string tmpFile = null;
+            try
+            {
+                // Komutları geçici bir .ps1 dosyasına yaz
+                tmpFile = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(),
+                    $"aio_{Guid.NewGuid():N}.ps1");
+                System.IO.File.WriteAllText(tmpFile, scriptContent, System.Text.Encoding.UTF8);
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-ExecutionPolicy Bypass -NonInteractive -File \"{tmpFile}\"",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+                var proc = Process.Start(startInfo);
+                proc?.WaitForExit();
+
+                MessageBox.Show($"{actionName} işlemi tamamlandı!", "Başarılı",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Komut çalıştırılamadı: {ex.Message}", "Hata",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                // Geçici dosyayı temizle
+                try { if (tmpFile != null) System.IO.File.Delete(tmpFile); } catch { }
             }
         }
 
