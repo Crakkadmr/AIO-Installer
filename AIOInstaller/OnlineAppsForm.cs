@@ -397,12 +397,200 @@ namespace AIOInstaller
             // Uzak katalog (GitHub) → önbellek → gömülü liste sırasıyla denenir.
             var fallback = new CatalogData { Apps = BuildCatalogue(), Profiles = DefaultProfiles() };
             var data = CatalogService.Load(fallback);
-            allApps = data.Apps;
+            allApps  = data.Apps;
             profiles = data.Profiles ?? new List<InstallProfile>();
+
+            // Yerel olarak eklenen extra uygulamaları da birleştir
+            MergeExtraCatalog(allApps);
 
             InitializeUi();
             if (listCategories.Items.Count > 0)
                 listCategories.SelectedIndex = 0;
+        }
+
+        // ─── Yerel ekstra katalog yolu ─────────────────────────────────────
+        private static string ExtraCatalogFile =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "programlar", "catalog.extra.json");
+
+        // ─── Yerel eklenen uygulamaları yükle / birleştir ─────────────────
+        private static void MergeExtraCatalog(List<OnlineApp> apps)
+        {
+            try
+            {
+                if (!File.Exists(ExtraCatalogFile)) return;
+                string json = File.ReadAllText(ExtraCatalogFile, System.Text.Encoding.UTF8);
+                if (string.IsNullOrWhiteSpace(json)) return;
+                using (var ms = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)))
+                {
+                    var ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(List<OnlineApp>));
+                    var extras = (List<OnlineApp>)ser.ReadObject(ms);
+                    if (extras == null) return;
+                    foreach (var e in extras)
+                    {
+                        if (!apps.Any(a => string.Equals(a.Name, e.Name, StringComparison.OrdinalIgnoreCase)))
+                            apps.Add(e);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // ─── Yerel eklenen uygulamayı diske kaydet ─────────────────────────
+        private static void SaveExtraCatalog(List<OnlineApp> extras)
+        {
+            try
+            {
+                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "programlar");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                using (var ms = new System.IO.MemoryStream())
+                {
+                    var ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(List<OnlineApp>));
+                    ser.WriteObject(ms, extras);
+                    File.WriteAllBytes(ExtraCatalogFile, ms.ToArray());
+                }
+            }
+            catch { }
+        }
+
+        // ─── Mevcut extra uygulamaları oku ─────────────────────────────────
+        private static List<OnlineApp> LoadExtraApps()
+        {
+            try
+            {
+                if (!File.Exists(ExtraCatalogFile)) return new List<OnlineApp>();
+                string json = File.ReadAllText(ExtraCatalogFile, System.Text.Encoding.UTF8);
+                if (string.IsNullOrWhiteSpace(json)) return new List<OnlineApp>();
+                using (var ms = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)))
+                {
+                    var ser = new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(List<OnlineApp>));
+                    return (List<OnlineApp>)ser.ReadObject(ms) ?? new List<OnlineApp>();
+                }
+            }
+            catch { return new List<OnlineApp>(); }
+        }
+
+        // ─── Kataloğu GitHub'dan yenile ─────────────────────────────────────
+        private async void RefreshCatalogAsync()
+        {
+            lblHeader.Text = "🔄 Katalog güncelleniyor…";
+            try
+            {
+                var fallback = new CatalogData { Apps = BuildCatalogue(), Profiles = DefaultProfiles() };
+                var data = await Task.Run(() => CatalogService.Load(fallback));
+                MergeExtraCatalog(data.Apps);
+                allApps  = data.Apps;
+                profiles = data.Profiles ?? new List<InstallProfile>();
+
+                // Kategori listesini güncelle
+                listCategories.Items.Clear();
+                var cats = allApps.Select(a => a.Category).Distinct().OrderBy(c => c).ToList();
+                cats.Insert(0, "Tümü");
+                foreach (var c in cats) listCategories.Items.Add(c);
+                if (listCategories.Items.Count > 0) listCategories.SelectedIndex = 0;
+                else RefreshAppList();
+
+                lblHeader.Text = "🌐 Online Program İndir";
+            }
+            catch
+            {
+                lblHeader.Text = "🌐 Online Program İndir";
+            }
+        }
+
+        // ─── "Bağlantı Ekle" diyaloğu ─────────────────────────────────────
+        private void ShowAddLinkDialog()
+        {
+            using (var dlg = new Form())
+            {
+                dlg.Text             = "➕ Yeni İndirme Bağlantısı Ekle";
+                dlg.ClientSize       = new Size(480, 310);
+                dlg.StartPosition    = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle  = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox      = false;
+                dlg.MinimizeBox      = false;
+                dlg.BackColor        = C(15, 23, 42);
+
+                int y = 15;
+                Label MakeLbl(string text) {
+                    var l = new Label { Text = text, ForeColor = Color.White,
+                        Font = UiFont(9F), Location = new Point(14, y + 2), Width = 110, AutoSize = false };
+                    return l;
+                }
+                TextBox MakeTxt(string placeholder, bool isPass = false) {
+                    var t = new TextBox { Location = new Point(130, y), Width = 330,
+                        BackColor = C(30, 41, 59), ForeColor = Color.White,
+                        BorderStyle = BorderStyle.FixedSingle, Font = UiFont(9.5F),
+                        UseSystemPasswordChar = isPass };
+                    SendMessage(t.Handle, 0x1501, IntPtr.Zero, placeholder);
+                    return t;
+                }
+
+                var lblName = MakeLbl("Uygulama Adı:"); var txtName = MakeTxt("örn: Adobe Photoshop"); y += 32;
+                var lblUrl  = MakeLbl("İndirme URL:");  var txtUrl  = MakeTxt("https://vip.solidshare.net/katilimsiz/..."); y += 32;
+                var lblCat  = MakeLbl("Kategori:");     var txtCat  = MakeTxt("SolidShare Katılımsız"); y += 32;
+                var lblDesc = MakeLbl("Açıklama:");     var txtDesc = MakeTxt("Program açıklaması"); y += 32;
+                var lblSize = MakeLbl("Boyut:");        var txtSize = MakeTxt("örn: ~50 MB"); y += 32;
+                var lblEmoji = MakeLbl("Emoji:");       var txtEmoji = MakeTxt("💿"); y += 32;
+
+                var btnOk = new Button { Text = "✅ Ekle", DialogResult = DialogResult.OK,
+                    Location = new Point(260, y + 5), Size = new Size(90, 30),
+                    BackColor = C(34, 197, 94), ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat, Font = UiFont(9.5F, FontStyle.Bold) };
+                var btnCan = new Button { Text = "İptal", DialogResult = DialogResult.Cancel,
+                    Location = new Point(360, y + 5), Size = new Size(90, 30),
+                    BackColor = C(71, 85, 105), ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat, Font = UiFont(9.5F) };
+                btnOk.FlatAppearance.BorderSize  = 0;
+                btnCan.FlatAppearance.BorderSize = 0;
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCan;
+                dlg.Controls.AddRange(new Control[] {
+                    lblName, txtName, lblUrl, txtUrl, lblCat, txtCat,
+                    lblDesc, txtDesc, lblSize, txtSize, lblEmoji, txtEmoji,
+                    btnOk, btnCan });
+
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                if (string.IsNullOrWhiteSpace(txtName.Text) || string.IsNullOrWhiteSpace(txtUrl.Text))
+                {
+                    MessageBox.Show("Uygulama adı ve URL zorunludur.", "Eksik Bilgi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var newApp = new OnlineApp(
+                    txtName.Text.Trim(),
+                    string.IsNullOrWhiteSpace(txtDesc.Text) ? txtName.Text.Trim() : txtDesc.Text.Trim(),
+                    string.IsNullOrWhiteSpace(txtCat.Text)  ? "Özel"               : txtCat.Text.Trim(),
+                    txtUrl.Text.Trim(),
+                    "",
+                    "Son",
+                    string.IsNullOrWhiteSpace(txtSize.Text)  ? "?"   : txtSize.Text.Trim(),
+                    string.IsNullOrWhiteSpace(txtEmoji.Text) ? "💿"  : txtEmoji.Text.Trim()
+                );
+
+                // Extra kataloğa ekle ve kaydet
+                var extras = LoadExtraApps();
+                extras.RemoveAll(a => string.Equals(a.Name, newApp.Name, StringComparison.OrdinalIgnoreCase));
+                extras.Add(newApp);
+                SaveExtraCatalog(extras);
+
+                // Çalışan listeye de ekle
+                allApps.RemoveAll(a => string.Equals(a.Name, newApp.Name, StringComparison.OrdinalIgnoreCase));
+                allApps.Add(newApp);
+
+                // Kategori güncellemesi
+                if (!listCategories.Items.Contains(newApp.Category))
+                {
+                    int ins = 1;
+                    while (ins < listCategories.Items.Count &&
+                           string.Compare(listCategories.Items[ins].ToString(), newApp.Category) < 0)
+                        ins++;
+                    listCategories.Items.Insert(ins, newApp.Category);
+                }
+                RefreshAppList();
+                MessageBox.Show($"'{newApp.Name}' başarıyla eklendi!\n\nKatalog.extra.json dosyasına kaydedildi.",
+                    "Eklendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         // ─── UI Setup ────────────────────────────────────────────────────
@@ -441,8 +629,50 @@ namespace AIOInstaller
                 AutoSize  = true,
                 Location  = new Point(23, 38)
             };
+
+            var btnRefresh = new Button
+            {
+                Text      = "🔄 Yenile",
+                Size      = new Size(90, 28),
+                BackColor = C(30, 41, 59),
+                ForeColor = C(148, 163, 184),
+                FlatStyle = FlatStyle.Flat,
+                Font      = UiFont(8.5F, FontStyle.Bold),
+                Cursor    = Cursors.Hand,
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnRefresh.FlatAppearance.BorderColor = C(51, 65, 85);
+            btnRefresh.FlatAppearance.BorderSize  = 1;
+            btnRefresh.Click += (s, e) => RefreshCatalogAsync();
+
+            var btnAddLink = new Button
+            {
+                Text      = "➕ Bağlantı Ekle",
+                Size      = new Size(120, 28),
+                BackColor = C(34, 197, 94),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = UiFont(8.5F, FontStyle.Bold),
+                Cursor    = Cursors.Hand,
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnAddLink.FlatAppearance.BorderSize = 0;
+            btnAddLink.FlatAppearance.MouseOverBackColor = C(74, 222, 128);
+            btnAddLink.Click += (s, e) => ShowAddLinkDialog();
+
+            void PositionHeaderBtns()
+            {
+                btnAddLink.Location = new Point(header.ClientSize.Width - btnAddLink.Width - 12,
+                    (header.ClientSize.Height - btnAddLink.Height) / 2);
+                btnRefresh.Location = new Point(btnAddLink.Left - btnRefresh.Width - 8,
+                    (header.ClientSize.Height - btnRefresh.Height) / 2);
+            }
+            header.Resize += (s, e) => PositionHeaderBtns();
+
             header.Controls.Add(lblHeader);
             header.Controls.Add(lblSub);
+            header.Controls.Add(btnRefresh);
+            header.Controls.Add(btnAddLink);
 
             // ── Status / Progress Panel ──────────────────────────────────
             panelStatus = new Panel
