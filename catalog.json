@@ -999,6 +999,226 @@
       "Version": "Son",
       "SizeMB": "~30 MB",
       "IconEmoji": "🧩"
+    },
+    {
+      "Name": "Internet Download Manager",
+      "Description": "5 kata hızlandırılmış indirme yöneticisi",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Internet.Download.Manager.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~10 MB",
+      "IconEmoji": "⬇️"
+    },
+    {
+      "Name": "Advanced SystemCare Pro",
+      "Description": "PC bakım, temizleme ve optimizasyon paketi",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Advanced.SystemCare.Pro.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~70 MB",
+      "IconEmoji": "🔧"
+    },
+    {
+      "Name": "IObit Driver Booster Pro",
+      "Description": "Otomatik sürücü güncelleme ve indirme programı",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/IObit.Driver.Booster.Pro.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~30 MB",
+      "IconEmoji": "🔄"
+    },
+    {
+      "Name": "CCleaner Pro",
+      "Description": "Kapsamlı sistem temizleme, bakım ve optimizasyon",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/CCleaner.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~35 MB",
+      "IconEmoji": "🧹"
+    },
+    {
+      "Name": "Daum PotPlayer",
+      "Description": "Yüksek kaliteli medya oynatıcı (codec dahil)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Daum.PotPlayer.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~45 MB",
+      "IconEmoji": "▶️"
+    },
+    {
+      "Name": "Revo Uninstaller Pro",
+      "Description": "Derinlemesine program kaldırma ve kalıntı temizleme",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Revo.Uninstaller.Pro.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~10 MB",
+      "IconEmoji": "🗑️"
+    },
+    {
+      "Name": "HiBit Uninstaller",
+      "Description": "Ücretsiz gelişmiş program kaldırıcı",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/HiBit.Uninstaller.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "🗑️"
+    },
+    {
+      "Name": "uTorrent",
+      "Description": "Hafif ve popüler torrent istemcisi",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/uTorrent.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "🌊"
+    },
+    {
+      "Name": "IObit Uninstaller Pro",
+      "Description": "Derinlemesine program kaldırma aracı",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/IObit.Uninstaller.Pro.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~25 MB",
+      "IconEmoji": "🗑️"
+    },
+    {
+      "Name": "Process Lasso",
+      "Description": "İşlemci optimizasyon ve öncelik yönetimi",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Process.Lasso.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "⚡"
+    },
+    {
+      "Name": "Macrium Reflect X",
+      "Description": "Gelişmiş sistem yedekleme ve geri yükleme",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Macrium.Reflect.X.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "💾"
+    },
+    {
+      "Name": "Media Player Classic BE",
+      "Description": "Klasik ve hafif medya oynatıcı (Black Edition)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Media.Player.Classic.BE.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "▶️"
+    },
+    {
+      "Name": "Adobe Photoshop",
+      "Description": "Profesyonel fotoğraf düzenleme yazılımı",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Adobe.Photoshop.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~5 GB",
+      "IconEmoji": "🖼️"
+    },
+    {
+      "Name": "Adobe Acrobat Reader DC",
+      "Description": "Gelişmiş PDF görüntüleyici (tam sürüm)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Adobe.Acrobat.Reader.DC.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~300 MB",
+      "IconEmoji": "📕"
+    },
+    {
+      "Name": "Adobe Acrobat Pro DC",
+      "Description": "PDF düzenleme, dönüştürme ve oluşturma paketi",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Adobe.Acrobat.Pro.DC.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~700 MB",
+      "IconEmoji": "📋"
+    },
+    {
+      "Name": "PDF-XChange Editor Plus",
+      "Description": "Hızlı ve özellikli PDF düzenleyici",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/PDF-XChange.Editor.Plus.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "📝"
+    },
+    {
+      "Name": "PDF Annotator",
+      "Description": "PDF üzerine not, imza ve şekil ekleme",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/PDF.Annotator.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~50 MB",
+      "IconEmoji": "📝"
+    },
+    {
+      "Name": "All In One Runtimes",
+      "Description": "Tüm runtime kütüphaneleri tek pakette (.NET, VC++, DirectX vb.)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/All.In.One.Runtimes.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~160 MB",
+      "IconEmoji": "⚙️"
+    },
+    {
+      "Name": "WinRAR (SolidShare)",
+      "Description": "Popüler arşiv yöneticisi — tema ve TR dil dahil",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/WinRAR.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "📦"
+    },
+    {
+      "Name": "Visual C++ Redist Installer",
+      "Description": "Visual C++ kütüphaneleri paketi (tüm sürümler)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Visual.C++.Redist.Installer.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~50 MB",
+      "IconEmoji": "🧩"
+    },
+    {
+      "Name": "Blackmagic Design Fusion Studio",
+      "Description": "Profesyonel VFX, 3D animasyon ve compositing",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/Blackmagic.Design.Fusion.Studio.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~800 MB",
+      "IconEmoji": "🎬"
+    },
+    {
+      "Name": "VueScan Professional",
+      "Description": "Evrensel tarayıcı sürücüsü (profesyonel sürüm)",
+      "Category": "SolidShare Katılımsız",
+      "DownloadUrl": "https://vip.solidshare.net/katilimsiz/VueScan.Professional.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~100 MB",
+      "IconEmoji": "🖨️"
     }
   ],
   "Profiles": [

@@ -31,6 +31,10 @@ namespace AIOInstaller
         private List<InstallProfile>    profiles;
         private CancellationTokenSource cts;
 
+        // ─── VIP Kimlik Bilgileri (oturum süresi, kalıcı değil) ──────────
+        private static string _vipUser = null;
+        private static string _vipPass = null;
+
         // ─── programlar klasör yolu ─────────────────────────────────────────
         private static readonly string DatabaseDir = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, "programlar");
@@ -688,6 +692,9 @@ namespace AIOInstaller
         // ─── Build a single card ──────────────────────────────────────────
         private Panel BuildAppCard(OnlineApp app)
         {
+            bool isVip = app.DownloadUrl?.IndexOf("vip.solidshare.net",
+                StringComparison.OrdinalIgnoreCase) >= 0;
+
             var card = new Panel
             {
                 Dock      = DockStyle.Top,
@@ -701,7 +708,7 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Left,
                 Width     = 4,
-                BackColor = C(59, 130, 246)
+                BackColor = isVip ? C(234, 179, 8) : C(59, 130, 246)
             };
 
             var lblIcon = new Label
@@ -732,8 +739,10 @@ namespace AIOInstaller
             };
             var lblMeta = new Label
             {
-                Text      = $"v{app.Version}  •  {app.SizeMB}",
-                ForeColor = C(100, 116, 139),
+                Text      = isVip
+                    ? $"⚡ SolidShare VIP  •  {app.SizeMB}"
+                    : $"v{app.Version}  •  {app.SizeMB}",
+                ForeColor = isVip ? C(234, 179, 8) : C(100, 116, 139),
                 Font      = UiFont(8F),
                 AutoSize  = true,
                 Location  = new Point(61, 50)
@@ -741,9 +750,9 @@ namespace AIOInstaller
 
             var btn = new Button
             {
-                Text      = "⬇ İndir",
+                Text      = isVip ? "🔐 VIP İndir" : "⬇ İndir",
                 Size      = new Size(110, 38),
-                BackColor = C(59, 130, 246),
+                BackColor = isVip ? C(161, 122, 6) : C(59, 130, 246),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font      = UiFont(9.5F, FontStyle.Bold),
@@ -751,8 +760,8 @@ namespace AIOInstaller
                 Anchor    = AnchorStyles.Top | AnchorStyles.Right
             };
             btn.FlatAppearance.BorderSize          = 0;
-            btn.FlatAppearance.MouseOverBackColor  = C(96, 165, 250);
-            btn.FlatAppearance.MouseDownBackColor  = C(37, 99, 235);
+            btn.FlatAppearance.MouseOverBackColor  = isVip ? C(234, 179, 8) : C(96, 165, 250);
+            btn.FlatAppearance.MouseDownBackColor  = isVip ? C(120, 90, 4) : C(37, 99, 235);
 
             void PositionBtn() => btn.Location = new Point(
                 card.ClientSize.Width - btn.Width - 14,
@@ -772,6 +781,55 @@ namespace AIOInstaller
             return card;
         }
 
+        // ─── VIP Kimlik Bilgisi Diyaloğu ─────────────────────────────────
+        private static bool EnsureVipCredentials()
+        {
+            if (!string.IsNullOrEmpty(_vipUser)) return true;
+
+            using (var dlg = new Form())
+            {
+                dlg.Text             = "SolidShare VIP Kimlik Bilgileri";
+                dlg.ClientSize       = new Size(320, 130);
+                dlg.StartPosition    = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle  = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox      = false;
+                dlg.MinimizeBox      = false;
+                dlg.BackColor        = C(15, 23, 42);
+
+                var lblU = new Label { Text = "Kullanıcı Adı:", ForeColor = Color.White,
+                    Font = UiFont(9F), Location = new Point(12, 18), AutoSize = true };
+                var txtU = new TextBox { Location = new Point(130, 15), Width = 170,
+                    BackColor = C(30, 41, 59), ForeColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle, Font = UiFont(9F) };
+                var lblP = new Label { Text = "Şifre:", ForeColor = Color.White,
+                    Font = UiFont(9F), Location = new Point(12, 50), AutoSize = true };
+                var txtP = new TextBox { Location = new Point(130, 47), Width = 170,
+                    BackColor = C(30, 41, 59), ForeColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle, UseSystemPasswordChar = true,
+                    Font = UiFont(9F) };
+                var btnOk = new Button { Text = "Giriş", DialogResult = DialogResult.OK,
+                    Location = new Point(130, 88), Size = new Size(80, 28),
+                    BackColor = C(59, 130, 246), ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat, Font = UiFont(9F) };
+                var btnCan = new Button { Text = "İptal", DialogResult = DialogResult.Cancel,
+                    Location = new Point(220, 88), Size = new Size(80, 28),
+                    BackColor = C(71, 85, 105), ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat, Font = UiFont(9F) };
+                btnOk.FlatAppearance.BorderSize  = 0;
+                btnCan.FlatAppearance.BorderSize = 0;
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCan;
+                dlg.Controls.AddRange(new Control[] { lblU, txtU, lblP, txtP, btnOk, btnCan });
+
+                if (dlg.ShowDialog() != DialogResult.OK || string.IsNullOrWhiteSpace(txtU.Text))
+                    return false;
+
+                _vipUser = txtU.Text.Trim();
+                _vipPass = txtP.Text;
+                return true;
+            }
+        }
+
         // ─── Tek bir uygulamayı programlar klasörüne indirir (çekirdek) ────
         // Buton/panel/cts yönetimini YAPMAZ; çağıran taraf sarmalar. Başarıda true.
         private async Task<bool> DownloadCoreAsync(OnlineApp app, CancellationToken token)
@@ -779,7 +837,12 @@ namespace AIOInstaller
             if (!Directory.Exists(DatabaseDir))
                 Directory.CreateDirectory(DatabaseDir);
 
-            string url = app.DownloadUrl;
+            string url   = app.DownloadUrl;
+            bool   isVip = url.IndexOf("vip.solidshare.net", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (isVip && !EnsureVipCredentials())
+                return false;
+
             string ext = ".exe";
             if (url.IndexOf(".msi", StringComparison.OrdinalIgnoreCase) >= 0)
                 ext = ".msi";
@@ -796,6 +859,9 @@ namespace AIOInstaller
 
                 using (var wc = new WebClient())
                 {
+                    if (isVip && !string.IsNullOrEmpty(_vipUser))
+                        wc.Credentials = new System.Net.NetworkCredential(_vipUser, _vipPass);
+
                     wc.DownloadProgressChanged += (s, e) =>
                     {
                         if (!progressBar.IsHandleCreated) return;
@@ -823,6 +889,17 @@ namespace AIOInstaller
                     return false;
                 }
                 return true;
+            }
+            catch (System.Net.WebException wex) when (
+                wex.Response is System.Net.HttpWebResponse hr &&
+                hr.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // Hatalı VIP bilgileri — sıfırla, kullanıcı tekrar deneyebilir
+                _vipUser = null;
+                _vipPass = null;
+                lblStatus.Text = $"❌ {app.Name}: VIP kullanıcı adı veya şifre hatalı.";
+                try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
+                return false;
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
