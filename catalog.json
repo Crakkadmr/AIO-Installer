@@ -1,0 +1,1065 @@
+{
+  "Apps": [
+    {
+      "Name": "Google Chrome",
+      "Description": "Dünyanın en popüler tarayıcısı",
+      "Category": "Tarayıcı",
+      "DownloadUrl": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
+      "SilentArgs": "/silent /install",
+      "Version": "Son",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "🌐"
+    },
+    {
+      "Name": "Mozilla Firefox",
+      "Description": "Hızlı ve gizlilik odaklı tarayıcı",
+      "Category": "Tarayıcı",
+      "DownloadUrl": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=tr",
+      "SilentArgs": "-ms",
+      "Version": "Son",
+      "SizeMB": "~55 MB",
+      "IconEmoji": "🦊"
+    },
+    {
+      "Name": "Brave Browser",
+      "Description": "Reklam engelleyici dahili tarayıcı",
+      "Category": "Tarayıcı",
+      "DownloadUrl": "https://laptop-updates.brave.com/latest/winx64",
+      "SilentArgs": "/silent /install",
+      "Version": "Son",
+      "SizeMB": "~85 MB",
+      "IconEmoji": "🦁"
+    },
+    {
+      "Name": "Opera GX",
+      "Description": "Oyuncular için özel tarayıcı",
+      "Category": "Tarayıcı",
+      "DownloadUrl": "https://net.geo.opera.com/opera_gx/stable/windows",
+      "SilentArgs": "/silent /install",
+      "Version": "Son",
+      "SizeMB": "~100 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "Microsoft Edge",
+      "Description": "Microsoft'un Chromium tabanlı tarayıcısı",
+      "Category": "Tarayıcı",
+      "DownloadUrl": "https://go.microsoft.com/fwlink/?linkid=2108834&Channel=Stable&language=tr&brand=M100",
+      "SilentArgs": "/silent /install",
+      "Version": "Son",
+      "SizeMB": "~110 MB",
+      "IconEmoji": "🌊"
+    },
+    {
+      "Name": "VLC Media Player",
+      "Description": "Evrensel medya oynatıcı",
+      "Category": "Medya",
+      "DownloadUrl": "https://get.videolan.org/vlc/last/win64/vlc-last-win64.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~40 MB",
+      "IconEmoji": "🎬"
+    },
+    {
+      "Name": "OBS Studio",
+      "Description": "Yayın ve ekran kaydı yazılımı",
+      "Category": "Medya",
+      "DownloadUrl": "https://github.com/obsproject/obs-studio/releases/latest/download/OBS-Studio-30.0.0-Windows-Installer.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~180 MB",
+      "IconEmoji": "📡"
+    },
+    {
+      "Name": "Spotify",
+      "Description": "Müzik ve podcast akış platformu",
+      "Category": "Medya",
+      "DownloadUrl": "https://download.scdn.co/SpotifySetup.exe",
+      "SilentArgs": "/silent",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "🎵"
+    },
+    {
+      "Name": "Audacity",
+      "Description": "Ücretsiz ses düzenleme yazılımı",
+      "Category": "Medya",
+      "DownloadUrl": "https://github.com/audacity/audacity/releases/latest/download/audacity-win-3.4.2-64bit.exe",
+      "SilentArgs": "/S",
+      "Version": "3.4.2",
+      "SizeMB": "~35 MB",
+      "IconEmoji": "🎙️"
+    },
+    {
+      "Name": "HandBrake",
+      "Description": "Video dönüştürme ve sıkıştırma aracı",
+      "Category": "Medya",
+      "DownloadUrl": "https://github.com/HandBrake/HandBrake/releases/latest/download/HandBrake-1.7.3-x86_64-Win_GUI.exe",
+      "SilentArgs": "/S",
+      "Version": "1.7.3",
+      "SizeMB": "~20 MB",
+      "IconEmoji": "🎞️"
+    },
+    {
+      "Name": "MPC-HC",
+      "Description": "Hafif ve güçlü medya oynatıcı",
+      "Category": "Medya",
+      "DownloadUrl": "https://github.com/clsid2/mpc-hc/releases/latest/download/MPC-HC.2.3.0.x64.exe",
+      "SilentArgs": "/SP- /VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "▶️"
+    },
+    {
+      "Name": "K-Lite Codec Pack",
+      "Description": "Eksiksiz video/ses codec paketi",
+      "Category": "Medya",
+      "DownloadUrl": "https://download3.codecguide.com/K-Lite_Codec_Pack_1830_Standard.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~35 MB",
+      "IconEmoji": "🎬"
+    },
+    {
+      "Name": "Kdenlive",
+      "Description": "Profesyonel ücretsiz video editörü",
+      "Category": "Medya",
+      "DownloadUrl": "https://download.kde.org/stable/kdenlive/23.08/windows/kdenlive-23.08.5.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~250 MB",
+      "IconEmoji": "🎥"
+    },
+    {
+      "Name": "foobar2000",
+      "Description": "Gelişmiş ve hafif müzik çalar",
+      "Category": "Medya",
+      "DownloadUrl": "https://www.foobar2000.org/files/foobar2000_v2.1.4.exe",
+      "SilentArgs": "/S",
+      "Version": "2.1.4",
+      "SizeMB": "~6 MB",
+      "IconEmoji": "🎵"
+    },
+    {
+      "Name": "AIMP",
+      "Description": "Profesyonel özellikli müzik çalar",
+      "Category": "Medya",
+      "DownloadUrl": "https://www.aimp.ru/files/windows/builds/aimp_5.10.2418_w64.exe",
+      "SilentArgs": "/S",
+      "Version": "5.10",
+      "SizeMB": "~25 MB",
+      "IconEmoji": "🎶"
+    },
+    {
+      "Name": "MediaInfo",
+      "Description": "Medya dosyası bilgi görüntüleme aracı",
+      "Category": "Medya",
+      "DownloadUrl": "https://mediaarea.net/download/binary/mediainfo-gui/24.01/MediaInfo_GUI_24.01_Windows_x64.exe",
+      "SilentArgs": "/S",
+      "Version": "24.01",
+      "SizeMB": "~8 MB",
+      "IconEmoji": "ℹ️"
+    },
+    {
+      "Name": "Kodi",
+      "Description": "Açık kaynaklı medya merkezi",
+      "Category": "Medya",
+      "DownloadUrl": "https://mirrors.kodi.tv/releases/windows/win64/kodi-21.0-Omega-x64.exe",
+      "SilentArgs": "/S",
+      "Version": "21.0",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "📺"
+    },
+    {
+      "Name": "7-Zip",
+      "Description": "Ücretsiz dosya sıkıştırma aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.7-zip.org/a/7z2301-x64.exe",
+      "SilentArgs": "/S",
+      "Version": "23.01",
+      "SizeMB": "~1.5 MB",
+      "IconEmoji": "🗜️"
+    },
+    {
+      "Name": "WinRAR",
+      "Description": "Popüler arşivleme programı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-701.exe",
+      "SilentArgs": "/S",
+      "Version": "7.01",
+      "SizeMB": "~3.5 MB",
+      "IconEmoji": "📦"
+    },
+    {
+      "Name": "NanaZip",
+      "Description": "Modern arayüzlü 7-Zip çatalı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/M2Team/NanaZip/releases/latest/download/NanaZip.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~3 MB",
+      "IconEmoji": "🗜️"
+    },
+    {
+      "Name": "AnyDesk",
+      "Description": "Uzak masaüstü erişim aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.anydesk.com/AnyDesk.exe",
+      "SilentArgs": "--install C:\\Program Files\\AnyDesk --start-with-win --create-shortcuts --silent",
+      "Version": "Son",
+      "SizeMB": "~4 MB",
+      "IconEmoji": "🖥️"
+    },
+    {
+      "Name": "TeamViewer",
+      "Description": "Uzak bağlantı ve destek aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.teamviewer.com/download/TeamViewer_Setup_x64.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~50 MB",
+      "IconEmoji": "📡"
+    },
+    {
+      "Name": "qBittorrent",
+      "Description": "Açık kaynaklı torrent istemcisi",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/qbittorrent/qBittorrent/releases/latest/download/qbittorrent_4.6.3_x64_setup.exe",
+      "SilentArgs": "/S",
+      "Version": "4.6.3",
+      "SizeMB": "~35 MB",
+      "IconEmoji": "⬇️"
+    },
+    {
+      "Name": "ShareX",
+      "Description": "Ekran görüntüsü ve ekran kaydı aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/ShareX/ShareX/releases/latest/download/ShareX-16.1.0-setup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~8 MB",
+      "IconEmoji": "📸"
+    },
+    {
+      "Name": "CPU-Z",
+      "Description": "İşlemci, RAM ve anakart bilgi aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.cpuid.com/cpu-z/cpu-z_2.09-en.exe",
+      "SilentArgs": "/S",
+      "Version": "2.09",
+      "SizeMB": "~2 MB",
+      "IconEmoji": "🔍"
+    },
+    {
+      "Name": "HWiNFO64",
+      "Description": "Kapsamlı sistem donanım izleme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.hwinfo.com/files/hwi_780.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "7.80",
+      "SizeMB": "~12 MB",
+      "IconEmoji": "🖥️"
+    },
+    {
+      "Name": "GPU-Z",
+      "Description": "Ekran kartı bilgi ve izleme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.techpowerup.com/GPU-Z.2.57.0.exe",
+      "SilentArgs": "/S",
+      "Version": "2.57",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "CrystalDiskInfo",
+      "Description": "Disk sağlık durumu izleme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://crystalmark.info/redirect.php?product=CrystalDiskInfoInstaller",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~6 MB",
+      "IconEmoji": "💿"
+    },
+    {
+      "Name": "CrystalDiskMark",
+      "Description": "Disk hız testi aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://crystalmark.info/redirect.php?product=CrystalDiskMarkInstaller",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "⚡"
+    },
+    {
+      "Name": "Bitwarden",
+      "Description": "Açık kaynaklı şifre yöneticisi",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/bitwarden/clients/releases/latest/download/Bitwarden-Installer-x64.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "🔐"
+    },
+    {
+      "Name": "KeePassXC",
+      "Description": "Yerel şifre yöneticisi",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/keepassxreboot/keepassxc/releases/latest/download/KeePassXC-2.7.7-Win64.msi",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "2.7.7",
+      "SizeMB": "~35 MB",
+      "IconEmoji": "🔑"
+    },
+    {
+      "Name": "Everything",
+      "Description": "Anlık dosya arama motoru",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.voidtools.com/Everything-1.4.1.1024.x64-Setup.exe",
+      "SilentArgs": "/S",
+      "Version": "1.4.1",
+      "SizeMB": "~2 MB",
+      "IconEmoji": "🔎"
+    },
+    {
+      "Name": "CCleaner",
+      "Description": "Sistem temizleme ve optimizasyon aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.ccleaner.com/ccsetup624.exe",
+      "SilentArgs": "/S",
+      "Version": "6.24",
+      "SizeMB": "~30 MB",
+      "IconEmoji": "🧹"
+    },
+    {
+      "Name": "Revo Uninstaller",
+      "Description": "Gelişmiş program kaldırma aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.revouninstaller.com/download/revouninstaller_setup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~7 MB",
+      "IconEmoji": "🗑️"
+    },
+    {
+      "Name": "VirtualBox",
+      "Description": "Ücretsiz sanallaştırma platformu",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.virtualbox.org/virtualbox/7.0.14/VirtualBox-7.0.14-161095-Win.exe",
+      "SilentArgs": "--silent",
+      "Version": "7.0.14",
+      "SizeMB": "~110 MB",
+      "IconEmoji": "📦"
+    },
+    {
+      "Name": "WinDirStat",
+      "Description": "Disk kullanım görselleştirme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/windirstat/windirstat/releases/latest/download/windirstat1_1_2_setup.exe",
+      "SilentArgs": "/S",
+      "Version": "1.1.2",
+      "SizeMB": "~1 MB",
+      "IconEmoji": "📊"
+    },
+    {
+      "Name": "Bulk Rename Utility",
+      "Description": "Toplu dosya yeniden adlandırma aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://www.bulkrenameutility.co.uk/Downloads/BRU_Setup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~8 MB",
+      "IconEmoji": "📝"
+    },
+    {
+      "Name": "Autoruns",
+      "Description": "Başlangıç programlarını yönetme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://download.sysinternals.com/files/Autoruns.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~1 MB",
+      "IconEmoji": "⚙️"
+    },
+    {
+      "Name": "Rufus",
+      "Description": "USB önyükleme diski oluşturma aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/pbatard/rufus/releases/latest/download/rufus-4.4.exe",
+      "SilentArgs": "",
+      "Version": "4.4",
+      "SizeMB": "~1.5 MB",
+      "IconEmoji": "💾"
+    },
+    {
+      "Name": "BalenaEtcher",
+      "Description": "SD kart / USB imaj yazma aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-Setup-1.18.11.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~140 MB",
+      "IconEmoji": "💿"
+    },
+    {
+      "Name": "Ventoy",
+      "Description": "Çoklu ISO USB önyükleme aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/ventoy/Ventoy/releases/latest/download/ventoy-1.0.97-windows.zip",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "🔧"
+    },
+    {
+      "Name": "PowerToys",
+      "Description": "Windows güç kullanıcı araçları paketi",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/microsoft/PowerToys/releases/latest/download/PowerToysSetup-0.79.0-x64.exe",
+      "SilentArgs": "/quiet",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "⚡"
+    },
+    {
+      "Name": "f.lux",
+      "Description": "Ekran renk sıcaklığı ayarlama aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://justgetflux.com/dlwin.html",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~2 MB",
+      "IconEmoji": "🌙"
+    },
+    {
+      "Name": "Rainmeter",
+      "Description": "Masaüstü özelleştirme platformu",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://github.com/rainmeter/rainmeter/releases/latest/download/Rainmeter-4.5.17.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "🎨"
+    },
+    {
+      "Name": "TreeSize Free",
+      "Description": "Klasör boyutu analiz aracı",
+      "Category": "Araçlar",
+      "DownloadUrl": "https://downloads.jam-software.de/treesize_free/TreeSizeFreeSetup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~25 MB",
+      "IconEmoji": "🌳"
+    },
+    {
+      "Name": "Malwarebytes",
+      "Description": "Gelişmiş kötü yazılım temizleme aracı",
+      "Category": "Güvenlik",
+      "DownloadUrl": "https://www.malwarebytes.com/api/downloads/mb-windows?filename=MBSetup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "🛡️"
+    },
+    {
+      "Name": "Avast Free Antivirus",
+      "Description": "Ücretsiz antivirüs yazılımı",
+      "Category": "Güvenlik",
+      "DownloadUrl": "https://down.avast.com/softw/full/avast_free_antivirus_setup_online.exe",
+      "SilentArgs": "/silent /sp-",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "🔒"
+    },
+    {
+      "Name": "AdwCleaner",
+      "Description": "Reklam yazılımı temizleme aracı",
+      "Category": "Güvenlik",
+      "DownloadUrl": "https://downloads.malwarebytes.com/file/adwcleaner",
+      "SilentArgs": "/VERYSILENT",
+      "Version": "Son",
+      "SizeMB": "~10 MB",
+      "IconEmoji": "🧹"
+    },
+    {
+      "Name": "Glasswire",
+      "Description": "Ağ izleme ve güvenlik duvarı",
+      "Category": "Güvenlik",
+      "DownloadUrl": "https://download.glasswire.com/GlassWireSetup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~70 MB",
+      "IconEmoji": "🌐"
+    },
+    {
+      "Name": "VS Code",
+      "Description": "Hafif ve güçlü kod editörü",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://update.code.visualstudio.com/latest/win32-x64-user/stable",
+      "SilentArgs": "/VERYSILENT /MERGETASKS=!runcode,addcontextmenufiles,addcontextmenufolders,associatewithfiles,addtopath",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "💻"
+    },
+    {
+      "Name": "Git",
+      "Description": "Dağıtık versiyon kontrol sistemi",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://github.com/git-for-windows/git/releases/latest/download/Git-2.44.0-64-bit.exe",
+      "SilentArgs": "/SILENT /NORESTART",
+      "Version": "2.44.0",
+      "SizeMB": "~50 MB",
+      "IconEmoji": "🐙"
+    },
+    {
+      "Name": "Notepad++",
+      "Description": "Gelişmiş metin ve kod editörü",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/latest/download/npp.8.6.4.Installer.x64.exe",
+      "SilentArgs": "/S",
+      "Version": "8.6.4",
+      "SizeMB": "~4 MB",
+      "IconEmoji": "📝"
+    },
+    {
+      "Name": "Python 3",
+      "Description": "Güçlü ve kolay programlama dili",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://www.python.org/ftp/python/3.12.3/python-3.12.3-amd64.exe",
+      "SilentArgs": "/quiet InstallAllUsers=1 PrependPath=1",
+      "Version": "3.12.3",
+      "SizeMB": "~25 MB",
+      "IconEmoji": "🐍"
+    },
+    {
+      "Name": "Node.js LTS",
+      "Description": "JavaScript çalışma zamanı ortamı",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://nodejs.org/dist/v20.11.1/node-v20.11.1-x64.msi",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "20.11.1 LTS",
+      "SizeMB": "~30 MB",
+      "IconEmoji": "🟢"
+    },
+    {
+      "Name": "Java JDK 21",
+      "Description": "Java Geliştirme Kiti (LTS sürümü)",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://download.oracle.com/java/21/latest/jdk-21_windows-x64_bin.exe",
+      "SilentArgs": "/s",
+      "Version": "21 LTS",
+      "SizeMB": "~170 MB",
+      "IconEmoji": "☕"
+    },
+    {
+      "Name": "WinSCP",
+      "Description": "Güvenli dosya transfer istemcisi (SFTP/FTP)",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://winscp.net/download/WinSCP-6.3.2-Setup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "6.3.2",
+      "SizeMB": "~12 MB",
+      "IconEmoji": "📁"
+    },
+    {
+      "Name": "PuTTY",
+      "Description": "SSH ve Telnet istemcisi",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.80-installer.exe",
+      "SilentArgs": "/S",
+      "Version": "0.80",
+      "SizeMB": "~3 MB",
+      "IconEmoji": "🔒"
+    },
+    {
+      "Name": "Postman",
+      "Description": "API geliştirme ve test aracı",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://dl.pstmn.io/download/latest/win64",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~150 MB",
+      "IconEmoji": "📮"
+    },
+    {
+      "Name": "Docker Desktop",
+      "Description": "Konteyner geliştirme ortamı",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe",
+      "SilentArgs": "install --quiet",
+      "Version": "Son",
+      "SizeMB": "~600 MB",
+      "IconEmoji": "🐳"
+    },
+    {
+      "Name": "HeidiSQL",
+      "Description": "MySQL/MariaDB/PostgreSQL veritabanı istemcisi",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://www.heidisql.com/installers/HeidiSQL_12.6.0.6765_Setup.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "12.6",
+      "SizeMB": "~20 MB",
+      "IconEmoji": "🗄️"
+    },
+    {
+      "Name": "DBeaver Community",
+      "Description": "Evrensel veritabanı yönetim aracı",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://dbeaver.io/files/dbeaver-ce-latest-x86_64-setup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~120 MB",
+      "IconEmoji": "🗃️"
+    },
+    {
+      "Name": "Insomnia",
+      "Description": "REST API test ve debug aracı",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://github.com/Kong/insomnia/releases/latest/download/Insomnia.Setup.9.3.3.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~180 MB",
+      "IconEmoji": "😴"
+    },
+    {
+      "Name": "FileZilla",
+      "Description": "FTP/SFTP istemcisi",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://download.filezilla-project.org/client/FileZilla_3.66.5_win64-setup.exe",
+      "SilentArgs": "/S",
+      "Version": "3.66.5",
+      "SizeMB": "~12 MB",
+      "IconEmoji": "📂"
+    },
+    {
+      "Name": "Windows Terminal",
+      "Description": "Modern terminal emülatörü",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://github.com/microsoft/terminal/releases/latest/download/Microsoft.WindowsTerminal_Win10_1.19.10821.0_8wekyb3d8bbwe.msixbundle",
+      "SilentArgs": "",
+      "Version": "Son",
+      "SizeMB": "~100 MB",
+      "IconEmoji": "⌨️"
+    },
+    {
+      "Name": "GitKraken",
+      "Description": "Görsel Git istemcisi",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://release.gitkraken.com/win64/GitKrakenSetup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "🦑"
+    },
+    {
+      "Name": "Sublime Text",
+      "Description": "Hızlı ve şık kod editörü",
+      "Category": "Geliştirici",
+      "DownloadUrl": "https://download.sublimetext.com/sublime_text_build_4169_x64_setup.exe",
+      "SilentArgs": "/VERYSILENT",
+      "Version": "4.4169",
+      "SizeMB": "~20 MB",
+      "IconEmoji": "✏️"
+    },
+    {
+      "Name": "Discord",
+      "Description": "Sesli sohbet ve topluluk platformu",
+      "Category": "İletişim",
+      "DownloadUrl": "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
+      "SilentArgs": "--silent",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "WhatsApp",
+      "Description": "Dünya genelinde popüler mesajlaşma uygulaması",
+      "Category": "İletişim",
+      "DownloadUrl": "https://web.whatsapp.com/desktop/windows/release/x64/WhatsAppSetup.exe",
+      "SilentArgs": "--silent",
+      "Version": "Son",
+      "SizeMB": "~180 MB",
+      "IconEmoji": "💬"
+    },
+    {
+      "Name": "Telegram",
+      "Description": "Hızlı ve güvenli mesajlaşma platformu",
+      "Category": "İletişim",
+      "DownloadUrl": "https://telegram.org/dl/desktop/win64",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~45 MB",
+      "IconEmoji": "✈️"
+    },
+    {
+      "Name": "Zoom",
+      "Description": "Video konferans ve toplantı aracı",
+      "Category": "İletişim",
+      "DownloadUrl": "https://zoom.us/client/latest/ZoomInstallerFull.exe",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "📹"
+    },
+    {
+      "Name": "Microsoft Teams",
+      "Description": "Kurumsal ekip iletişim platformu",
+      "Category": "İletişim",
+      "DownloadUrl": "https://teams.microsoft.com/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "Son",
+      "SizeMB": "~130 MB",
+      "IconEmoji": "💼"
+    },
+    {
+      "Name": "Slack",
+      "Description": "Ekip iletişimi ve iş birliği platformu",
+      "Category": "İletişim",
+      "DownloadUrl": "https://slack.com/ssb/download-win64-msi",
+      "SilentArgs": "/quiet",
+      "Version": "Son",
+      "SizeMB": "~120 MB",
+      "IconEmoji": "🧵"
+    },
+    {
+      "Name": "Skype",
+      "Description": "Microsoft video arama ve mesajlaşma uygulaması",
+      "Category": "İletişim",
+      "DownloadUrl": "https://get.skype.com/go/getskype-full",
+      "SilentArgs": "/VERYSILENT /SP-",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "📞"
+    },
+    {
+      "Name": "Viber",
+      "Description": "Ücretsiz sesli ve görüntülü arama uygulaması",
+      "Category": "İletişim",
+      "DownloadUrl": "https://download.cdn.viber.com/cdn/desktop/Windows/ViberSetup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "📱"
+    },
+    {
+      "Name": "Signal",
+      "Description": "Gizlilik öncelikli güvenli mesajlaşma",
+      "Category": "İletişim",
+      "DownloadUrl": "https://updates.signal.org/desktop/signal-desktop-win-7.20.0.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "🔏"
+    },
+    {
+      "Name": "Steam",
+      "Description": "Dünyanın en büyük oyun platformu",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~3 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "Epic Games Launcher",
+      "Description": "Epic Games oyun istemcisi ve mağazası",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi",
+      "SilentArgs": "/quiet",
+      "Version": "Son",
+      "SizeMB": "~60 MB",
+      "IconEmoji": "⚡"
+    },
+    {
+      "Name": "Riot Client",
+      "Description": "Riot Games oyunları istemcisi (LoL, Valorant, TFT...)",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://valorant.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.live.eu.exe",
+      "SilentArgs": "--skip-to-install",
+      "Version": "Son",
+      "SizeMB": "~50 MB",
+      "IconEmoji": "⚔️"
+    },
+    {
+      "Name": "Battle.net",
+      "Description": "Blizzard oyun istemcisi (WoW, OW2, Diablo 4...)",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://downloader.battle.net/desktop/Battle.net-Setup.exe",
+      "SilentArgs": "--lang=trTR",
+      "Version": "Son",
+      "SizeMB": "~2 MB",
+      "IconEmoji": "🔵"
+    },
+    {
+      "Name": "Ubisoft Connect",
+      "Description": "Ubisoft oyun istemcisi (Assassin's Creed, Far Cry...)",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://ubi.li/4vxt9",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~90 MB",
+      "IconEmoji": "🔷"
+    },
+    {
+      "Name": "EA App",
+      "Description": "EA Games istemcisi (FIFA, Battlefield, The Sims...)",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://origin-a.akamaihd.net/EA-Desktop-Client/installer-data/EAappInstaller.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~75 MB",
+      "IconEmoji": "🎯"
+    },
+    {
+      "Name": "GOG Galaxy",
+      "Description": "DRM-free oyun platformu",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://cdn.gog.com/open/galaxy/client/installer/win/GOGGalaxySetup_2.0.exe",
+      "SilentArgs": "/VERYSILENT /NORESTART",
+      "Version": "Son",
+      "SizeMB": "~60 MB",
+      "IconEmoji": "🌌"
+    },
+    {
+      "Name": "Playnite",
+      "Description": "Açık kaynaklı oyun kütüphane yöneticisi",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://github.com/JosefNemec/Playnite/releases/latest/download/PlayniteInstaller.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~15 MB",
+      "IconEmoji": "🎲"
+    },
+    {
+      "Name": "Xbox App",
+      "Description": "Microsoft Xbox oyun istemcisi",
+      "Category": "Oyun İstemcisi",
+      "DownloadUrl": "https://go.microsoft.com/fwlink/?linkid=2213773",
+      "SilentArgs": "/quiet",
+      "Version": "Son",
+      "SizeMB": "~5 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "LibreOffice",
+      "Description": "Ücretsiz ve açık kaynaklı ofis paketi",
+      "Category": "Ofis",
+      "DownloadUrl": "https://download.documentfoundation.org/libreoffice/stable/latest/win/x86_64/LibreOffice_latest_Win_x86-64.msi",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "Son",
+      "SizeMB": "~350 MB",
+      "IconEmoji": "📄"
+    },
+    {
+      "Name": "SumatraPDF",
+      "Description": "Hafif ve hızlı PDF okuyucu",
+      "Category": "Ofis",
+      "DownloadUrl": "https://www.sumatrapdfreader.org/dl/rel/SumatraPDF-3.4.6-64-install.exe",
+      "SilentArgs": "/S",
+      "Version": "3.4.6",
+      "SizeMB": "~10 MB",
+      "IconEmoji": "📖"
+    },
+    {
+      "Name": "Foxit PDF Reader",
+      "Description": "Kapsamlı özellikli PDF okuyucu",
+      "Category": "Ofis",
+      "DownloadUrl": "https://cdn01.foxitsoftware.com/pub/foxit/reader/desktop/win/2024.2/2024.2.0.25138/FoxitPDFReader2024.2.0.25138_Setup_Prom.exe",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "Son",
+      "SizeMB": "~75 MB",
+      "IconEmoji": "📕"
+    },
+    {
+      "Name": "Okular",
+      "Description": "KDE'nin çok formatlı belge okuyucusu",
+      "Category": "Ofis",
+      "DownloadUrl": "https://cdn.kde.org/ci-builds/graphics/okular/master/windows/okular-latest-amd64.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "📚"
+    },
+    {
+      "Name": "OnlyOffice Desktop",
+      "Description": "Microsoft Office uyumlu ofis paketi",
+      "Category": "Ofis",
+      "DownloadUrl": "https://download.onlyoffice.com/install/desktop/editors/windows/onlyoffice_desktopeditors_x64.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~400 MB",
+      "IconEmoji": "📊"
+    },
+    {
+      "Name": "Notion",
+      "Description": "Not alma ve proje yönetim aracı",
+      "Category": "Ofis",
+      "DownloadUrl": "https://desktop-release.notion-static.com/Notion%20Setup%203.13.0.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~140 MB",
+      "IconEmoji": "📌"
+    },
+    {
+      "Name": "Obsidian",
+      "Description": "Markdown tabanlı bilgi yönetim uygulaması",
+      "Category": "Ofis",
+      "DownloadUrl": "https://github.com/obsidianmd/obsidian-releases/releases/latest/download/Obsidian-1.5.8.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~80 MB",
+      "IconEmoji": "🔮"
+    },
+    {
+      "Name": "GIMP",
+      "Description": "Ücretsiz ve güçlü görüntü düzenleme yazılımı",
+      "Category": "Grafik",
+      "DownloadUrl": "https://download.gimp.org/mirror/pub/gimp/v2.10/windows/gimp-2.10.36-setup-2.exe",
+      "SilentArgs": "/S",
+      "Version": "2.10.36",
+      "SizeMB": "~250 MB",
+      "IconEmoji": "🖼️"
+    },
+    {
+      "Name": "Inkscape",
+      "Description": "Vektör grafik editörü",
+      "Category": "Grafik",
+      "DownloadUrl": "https://inkscape.org/gallery/item/44680/inkscape-1.3.2_2023-11-25_091e20e-x64.exe",
+      "SilentArgs": "/S",
+      "Version": "1.3.2",
+      "SizeMB": "~120 MB",
+      "IconEmoji": "✒️"
+    },
+    {
+      "Name": "paint.net",
+      "Description": "Kullanımı kolay görüntü düzenleme aracı",
+      "Category": "Grafik",
+      "DownloadUrl": "https://github.com/paintdotnet/release/releases/latest/download/paint.net.5.0.13.install.anycpu.web.zip",
+      "SilentArgs": "/S",
+      "Version": "5.0.13",
+      "SizeMB": "~8 MB",
+      "IconEmoji": "🎨"
+    },
+    {
+      "Name": "DaVinci Resolve",
+      "Description": "Profesyonel video düzenleme yazılımı",
+      "Category": "Grafik",
+      "DownloadUrl": "https://www.blackmagicdesign.com/api/support/us/downloads.json",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~4 GB",
+      "IconEmoji": "🎬"
+    },
+    {
+      "Name": "Canva Desktop",
+      "Description": "Çevrimiçi tasarım aracının masaüstü uygulaması",
+      "Category": "Grafik",
+      "DownloadUrl": "https://desktop.canva.com/windows/prod/Canva.exe",
+      "SilentArgs": "/S",
+      "Version": "Son",
+      "SizeMB": "~200 MB",
+      "IconEmoji": "🎨"
+    },
+    {
+      "Name": "Blender",
+      "Description": "3D modelleme ve animasyon yazılımı",
+      "Category": "Grafik",
+      "DownloadUrl": "https://download.blender.org/release/Blender4.1/blender-4.1.0-windows-x64.msi",
+      "SilentArgs": "/quiet /norestart",
+      "Version": "4.1.0",
+      "SizeMB": "~700 MB",
+      "IconEmoji": "🦴"
+    },
+    {
+      "Name": ".NET Desktop Runtime 8",
+      "Description": "Gerekli .NET kütüphaneleri",
+      "Category": "Sistem",
+      "DownloadUrl": "https://download.visualstudio.microsoft.com/download/pr/49ebc904-8bde-40db-9fc0-097561deca8b/3028d0026eaf1cfdfbba8b79ebdefcd3/windowsdesktop-runtime-8.0.3-win-x64.exe",
+      "SilentArgs": "/install /quiet /norestart",
+      "Version": "8.0",
+      "SizeMB": "~55 MB",
+      "IconEmoji": "⚙️"
+    },
+    {
+      "Name": "DirectX",
+      "Description": "Microsoft DirectX End-User Runtime",
+      "Category": "Sistem",
+      "DownloadUrl": "https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe",
+      "SilentArgs": "/Q",
+      "Version": "Son",
+      "SizeMB": "~1 MB",
+      "IconEmoji": "🎮"
+    },
+    {
+      "Name": "Visual C++ Redistributable",
+      "Description": "AIO Repack (Tüm VC++ sürümleri)",
+      "Category": "Sistem",
+      "DownloadUrl": "https://github.com/abbodi1406/vcredist/releases/download/v0.79.0/VisualCppRedist_AIO_x86_x64.exe",
+      "SilentArgs": "/y",
+      "Version": "Son",
+      "SizeMB": "~30 MB",
+      "IconEmoji": "🧩"
+    }
+  ],
+  "Profiles": [
+    {
+      "Name": "Temel",
+      "Icon": "🏠",
+      "Apps": [
+        "Google Chrome",
+        "7-Zip",
+        "VLC Media Player",
+        "Foxit PDF Reader",
+        "SumatraPDF",
+        "Everything",
+        "Visual C++ Redistributable",
+        ".NET Desktop Runtime 8"
+      ]
+    },
+    {
+      "Name": "Ofis",
+      "Icon": "📄",
+      "Apps": [
+        "Google Chrome",
+        "LibreOffice",
+        "OnlyOffice Desktop",
+        "Foxit PDF Reader",
+        "SumatraPDF",
+        "7-Zip",
+        "Zoom",
+        "Microsoft Teams",
+        "AnyDesk"
+      ]
+    },
+    {
+      "Name": "Oyun",
+      "Icon": "🎮",
+      "Apps": [
+        "Google Chrome",
+        "Steam",
+        "Epic Games Launcher",
+        "Discord",
+        "OBS Studio",
+        "Visual C++ Redistributable",
+        "DirectX",
+        "7-Zip"
+      ]
+    },
+    {
+      "Name": "Geliştirici",
+      "Icon": "💻",
+      "Apps": [
+        "Google Chrome",
+        "VS Code",
+        "Git",
+        "Node.js LTS",
+        "Python 3",
+        "Notepad++",
+        "Windows Terminal",
+        "DBeaver Community",
+        "Docker Desktop",
+        "7-Zip"
+      ]
+    }
+  ]
+}

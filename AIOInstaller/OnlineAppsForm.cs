@@ -28,6 +28,7 @@ namespace AIOInstaller
 
         // ─── State ────────────────────────────────────────────────────────
         private List<OnlineApp>         allApps;
+        private List<InstallProfile>    profiles;
         private CancellationTokenSource cts;
 
         // ─── programlar klasör yolu ─────────────────────────────────────────
@@ -369,10 +370,32 @@ namespace AIOInstaller
                 "/y", "Son", "~30 MB", "🧩"),
         };
 
+        // ─── Varsayılan (gömülü) kurulum profilleri ──────────────────────
+        private static List<InstallProfile> DefaultProfiles() => new List<InstallProfile>
+        {
+            new InstallProfile { Name = "Temel", Icon = "🏠", Apps = new List<string> {
+                "Google Chrome", "7-Zip", "VLC Media Player", "Foxit PDF Reader",
+                "SumatraPDF", "Everything", "Visual C++ Redistributable", ".NET Desktop Runtime 8" } },
+            new InstallProfile { Name = "Ofis", Icon = "📄", Apps = new List<string> {
+                "Google Chrome", "LibreOffice", "OnlyOffice Desktop", "Foxit PDF Reader",
+                "SumatraPDF", "7-Zip", "Zoom", "Microsoft Teams", "AnyDesk" } },
+            new InstallProfile { Name = "Oyun", Icon = "🎮", Apps = new List<string> {
+                "Google Chrome", "Steam", "Epic Games Launcher", "Discord", "OBS Studio",
+                "Visual C++ Redistributable", "DirectX", "7-Zip" } },
+            new InstallProfile { Name = "Geliştirici", Icon = "💻", Apps = new List<string> {
+                "Google Chrome", "VS Code", "Git", "Node.js LTS", "Python 3",
+                "Notepad++", "Windows Terminal", "DBeaver Community", "Docker Desktop", "7-Zip" } },
+        };
+
         // ─── Constructor ────────────────────────────────────────────────
         public OnlineAppsForm()
         {
-            allApps = BuildCatalogue();
+            // Uzak katalog (GitHub) → önbellek → gömülü liste sırasıyla denenir.
+            var fallback = new CatalogData { Apps = BuildCatalogue(), Profiles = DefaultProfiles() };
+            var data = CatalogService.Load(fallback);
+            allApps = data.Apps;
+            profiles = data.Profiles ?? new List<InstallProfile>();
+
             InitializeUi();
             if (listCategories.Items.Count > 0)
                 listCategories.SelectedIndex = 0;
@@ -550,8 +573,56 @@ namespace AIOInstaller
                 Padding    = new Padding(8)
             };
 
+            // ── Profiller şeridi (hazır paketler) ────────────────────────
+            var panelProfiles = new FlowLayoutPanel
+            {
+                Dock          = DockStyle.Top,
+                Height        = 48,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents  = false,
+                AutoScroll    = true,
+                BackColor     = C(30, 41, 59),
+                Padding       = new Padding(10, 8, 10, 8)
+            };
+            var lblProfiles = new Label
+            {
+                Text      = "📦 PAKETLER:",
+                ForeColor = C(148, 163, 184),
+                Font      = UiFont(8.5F, FontStyle.Bold),
+                AutoSize  = false,
+                Width     = 90,
+                Height    = 30,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin    = new Padding(0, 0, 4, 0)
+            };
+            panelProfiles.Controls.Add(lblProfiles);
+
+            foreach (var profile in profiles)
+            {
+                InstallProfile captured = profile;
+                var pbtn = new Button
+                {
+                    Text      = $"{profile.Icon} {profile.Name}",
+                    AutoSize  = true,
+                    Height    = 30,
+                    BackColor = C(234, 88, 12),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font      = UiFont(8.5F, FontStyle.Bold),
+                    Cursor    = Cursors.Hand,
+                    Margin    = new Padding(3, 0, 3, 0),
+                    Padding   = new Padding(8, 0, 8, 0)
+                };
+                pbtn.FlatAppearance.BorderSize = 0;
+                pbtn.FlatAppearance.MouseOverBackColor = C(249, 115, 22);
+                pbtn.Click += async (s, e) => await DownloadProfileAsync(captured);
+                panelProfiles.Controls.Add(pbtn);
+            }
+
             panelRight.Controls.Add(panelAppList);
             panelRight.Controls.Add(panelSearch);
+            if (profiles != null && profiles.Count > 0)
+                panelRight.Controls.Add(panelProfiles);
 
             var splitter = new Splitter
             {
@@ -701,21 +772,13 @@ namespace AIOInstaller
             return card;
         }
 
-        // ─── Download to programlar folder ─────────────────────────────────
-        private async Task DownloadToDatabaseAsync(OnlineApp app, Button triggerBtn)
+        // ─── Tek bir uygulamayı programlar klasörüne indirir (çekirdek) ────
+        // Buton/panel/cts yönetimini YAPMAZ; çağıran taraf sarmalar. Başarıda true.
+        private async Task<bool> DownloadCoreAsync(OnlineApp app, CancellationToken token)
         {
-            if (cts != null && !cts.IsCancellationRequested)
-            {
-                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
-                    "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // programlar klasörü oluştur
             if (!Directory.Exists(DatabaseDir))
                 Directory.CreateDirectory(DatabaseDir);
 
-            // Dosya uzantısı algıla
             string url = app.DownloadUrl;
             string ext = ".exe";
             if (url.IndexOf(".msi", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -723,22 +786,14 @@ namespace AIOInstaller
             else if (url.IndexOf(".zip", StringComparison.OrdinalIgnoreCase) >= 0)
                 ext = ".zip";
 
-            // Güvenli dosya adı
             string safeName = string.Join("_",
                 app.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
             string destFile = Path.Combine(DatabaseDir, safeName + ext);
 
-            cts = new CancellationTokenSource();
-            var token = cts.Token;
-
-            SetAllDownloadButtonsEnabled(false);
-            panelStatus.Visible = true;
-            progressBar.Style   = ProgressBarStyle.Continuous;
-            progressBar.Value   = 0;
-            lblStatus.Text      = $"Hazırlanıyor: {app.Name}…";
-
             try
             {
+                try { ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12; } catch { }
+
                 using (var wc = new WebClient())
                 {
                     wc.DownloadProgressChanged += (s, e) =>
@@ -756,44 +811,155 @@ namespace AIOInstaller
                         }));
                     };
 
-                    token.Register(() => wc.CancelAsync());
-
-                    await wc.DownloadFileTaskAsync(new Uri(url), destFile);
+                    using (token.Register(() => wc.CancelAsync()))
+                    {
+                        await wc.DownloadFileTaskAsync(new Uri(url), destFile);
+                    }
                 }
 
-                if (!token.IsCancellationRequested)
+                if (token.IsCancellationRequested)
+                {
+                    try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException))
+            {
+                lblStatus.Text = $"❌ {app.Name}: {ex.Message}";
+                try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
+                return false;
+            }
+            catch
+            {
+                try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
+                return false;
+            }
+        }
+
+        // ─── Tek uygulama indir (kart butonundan) ─────────────────────────
+        private async Task DownloadToDatabaseAsync(OnlineApp app, Button triggerBtn)
+        {
+            if (cts != null && !cts.IsCancellationRequested)
+            {
+                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
+                    "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            cts = new CancellationTokenSource();
+            SetAllDownloadButtonsEnabled(false);
+            panelStatus.Visible = true;
+            progressBar.Style   = ProgressBarStyle.Continuous;
+            progressBar.Value   = 0;
+            lblStatus.Text      = $"Hazırlanıyor: {app.Name}…";
+
+            try
+            {
+                bool ok = await DownloadCoreAsync(app, cts.Token);
+                if (ok)
                 {
                     lblStatus.Text    = $"✅ {app.Name} → programlar klasörüne kaydedildi";
                     progressBar.Value = 100;
                     MessageBox.Show(
-                        $"{app.Name} başarıyla indirildi!\n\nKonum: {destFile}\n\nProgramı çalıştırmak için programlar klasörünü açın.",
+                        $"{app.Name} başarıyla indirildi!\n\nProgram 'programlar' klasörüne kaydedildi.",
                         "İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (cts.IsCancellationRequested)
+                {
+                    lblStatus.Text = "⛔ İndirme durduruldu.";
                 }
                 else
                 {
-                    lblStatus.Text = "⛔ İndirme durduruldu.";
-                    try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
-                }
-            }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
-            {
-                progressBar.Value = 0;
-                lblStatus.Text    = $"❌ Hata: {ex.Message}";
-                if (!token.IsCancellationRequested)
                     MessageBox.Show(
-                        $"İndirme sırasında hata:\n{ex.Message}",
-                        "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
+                        $"{app.Name} indirilemedi. Link çalışmıyor olabilir.\n\n" +
+                        "Not: Katalog linkleri GitHub'daki catalog.json dosyasından güncellenir.",
+                        "İndirme Başarısız", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
             finally
             {
                 cts?.Dispose();
                 cts = null;
-
                 progressBar.Style = ProgressBarStyle.Continuous;
                 SetAllDownloadButtonsEnabled(true);
+                await Task.Delay(3000);
+                if (cts == null)
+                    panelStatus.Visible = false;
+            }
+        }
 
-                await Task.Delay(4000);
+        // ─── Profil (paket) indir: içindeki tüm uygulamaları sırayla indir ─
+        private async Task DownloadProfileAsync(InstallProfile profile)
+        {
+            if (cts != null && !cts.IsCancellationRequested)
+            {
+                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
+                    "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Profildeki adları katalogdaki uygulamalarla eşle
+            var list = new List<OnlineApp>();
+            foreach (var name in profile.Apps)
+            {
+                var match = allApps.FirstOrDefault(a =>
+                    string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (match != null && !list.Contains(match))
+                    list.Add(match);
+            }
+
+            if (list.Count == 0)
+            {
+                MessageBox.Show("Bu pakette indirilebilecek uygulama bulunamadı.",
+                    "Paket", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string names = string.Join("\n", list.Select(a => $"• {a.Name}"));
+            if (MessageBox.Show(
+                    $"'{profile.Name}' paketi — {list.Count} uygulama 'programlar' klasörüne indirilecek:\n\n{names}\n\nDevam edilsin mi?",
+                    $"{profile.Icon} {profile.Name} Paketi",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            cts = new CancellationTokenSource();
+            SetAllDownloadButtonsEnabled(false);
+            panelStatus.Visible = true;
+            progressBar.Style   = ProgressBarStyle.Continuous;
+
+            int ok = 0, fail = 0;
+            try
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (cts.IsCancellationRequested) break;
+                    progressBar.Value = 0;
+                    lblStatus.Text = $"({i + 1}/{list.Count}) {list[i].Name} indiriliyor…";
+                    bool r = await DownloadCoreAsync(list[i], cts.Token);
+                    if (r) ok++; else fail++;
+                }
+
+                if (cts.IsCancellationRequested)
+                {
+                    lblStatus.Text = $"⛔ Paket indirme durduruldu. ({ok} indirildi)";
+                }
+                else
+                {
+                    lblStatus.Text = $"✅ {profile.Name} paketi: {ok} indirildi, {fail} atlandı.";
+                    MessageBox.Show(
+                        $"'{profile.Name}' paketi tamamlandı.\n\nİndirilen: {ok}\nBaşarısız/atlanan: {fail}\n\n" +
+                        "Programlar 'programlar' klasörüne eklendi; kurmak için ana penceredeki 'Tam Kurulum' veya 'Seçilenleri Kur' kullanabilirsiniz.",
+                        "Paket İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            finally
+            {
+                cts?.Dispose();
+                cts = null;
+                progressBar.Style = ProgressBarStyle.Continuous;
+                SetAllDownloadButtonsEnabled(true);
+                await Task.Delay(3000);
                 if (cts == null)
                     panelStatus.Visible = false;
             }

@@ -58,6 +58,7 @@ namespace AIOInstaller
         private Button btnDefenderOn;
         private Button btnUpdateBlock;
         private Button btnUpdateAllow;
+        private Button btnBloatware;
         private Label lblCredit;
         private Label lblTotalCount;
 
@@ -483,6 +484,13 @@ namespace AIOInstaller
             btnUpdateAllow.Click += BtnUpdateAllow_Click;
             sideFlow.Controls.Add(btnUpdateAllow);
 
+            // ── Kategori: SİSTEM ──
+            addCategoryLabel(sideFlow, "🧰 Sistem");
+
+            btnBloatware = createSideButton("🧹 Bloatware Temizle", C(168, 85, 247));
+            btnBloatware.Click += BtnBloatware_Click;
+            sideFlow.Controls.Add(btnBloatware);
+
             rightPanel.Controls.Add(sideFlow);
             rightPanel.Controls.Add(separator);
 
@@ -907,6 +915,7 @@ namespace AIOInstaller
             btnDefenderOn.Enabled = enabled;
             btnUpdateBlock.Enabled = enabled;
             btnUpdateAllow.Enabled = enabled;
+            btnBloatware.Enabled = enabled;
         }
 
         private void BtnDownload_Click(object sender, EventArgs e)
@@ -1451,6 +1460,96 @@ namespace AIOInstaller
                     installCts = null;
                 }
                 btnStopInstall.Enabled = false;
+                progressBarInstall.Style = ProgressBarStyle.Continuous;
+                SetUiEnabled(true);
+            }
+        }
+
+        private async void BtnBloatware_Click(object sender, EventArgs e)
+        {
+            if (isInstalling)
+            {
+                return;
+            }
+
+            DialogResult confirm = MessageBox.Show(
+                "Gereksiz Windows uygulamaları (bloatware) kaldırılacak:\n\n" +
+                "• Xbox uygulamaları, Haritalar, Hava Durumu, Haberler\n" +
+                "• Skype, People, Your Phone, Clipchamp, To-Do\n" +
+                "• 3D Builder/Viewer, Solitaire, Groove Müzik, Film-TV\n" +
+                "• Feedback Hub, Get Help, Teams (tüketici) ve benzerleri\n\n" +
+                "Mağaza, Terminal, Hesap Makinesi, Fotoğraflar gibi faydalı\n" +
+                "uygulamalara DOKUNULMAZ.\n\nDevam edilsin mi?",
+                "🧹 Bloatware Temizle",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                SetUiEnabled(false);
+                installStatusPanel.Visible = true;
+                btnStopInstall.Enabled = false;
+                progressBarInstall.Style = ProgressBarStyle.Marquee;
+                lblInstallStatus.Text = "Gereksiz uygulamalar kaldırılıyor...";
+
+                string result = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                    "$apps = @(\r\n" +
+                    "  'Microsoft.3DBuilder','Microsoft.Microsoft3DViewer','Microsoft.BingWeather',\r\n" +
+                    "  'Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted',\r\n" +
+                    "  'Microsoft.MicrosoftOfficeHub','Microsoft.MicrosoftSolitaireCollection',\r\n" +
+                    "  'Microsoft.MixedReality.Portal','Microsoft.People','Microsoft.SkypeApp',\r\n" +
+                    "  'Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.ZuneMusic',\r\n" +
+                    "  'Microsoft.ZuneVideo','Microsoft.YourPhone','Microsoft.Clipchamp','Microsoft.Todos',\r\n" +
+                    "  'Microsoft.PowerAutomateDesktop','MicrosoftTeams','Microsoft.549981C3F5F10',\r\n" +
+                    "  'Microsoft.Xbox.TCUI','Microsoft.XboxApp','Microsoft.XboxGameOverlay',\r\n" +
+                    "  'Microsoft.XboxGamingOverlay','Microsoft.XboxIdentityProvider',\r\n" +
+                    "  'Microsoft.XboxSpeechToTextOverlay','Microsoft.GamingApp'\r\n" +
+                    ")\r\n" +
+                    "$removed = 0\r\n" +
+                    "foreach ($a in $apps) {\r\n" +
+                    "  $pkg = Get-AppxPackage -Name $a -AllUsers -ErrorAction SilentlyContinue\r\n" +
+                    "  if ($pkg) {\r\n" +
+                    "    $pkg | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue\r\n" +
+                    "    $removed++\r\n" +
+                    "  }\r\n" +
+                    "  Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue |\r\n" +
+                    "    Where-Object { $_.DisplayName -eq $a } |\r\n" +
+                    "    Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Out-Null\r\n" +
+                    "}\r\n" +
+                    "\"REMOVED:$removed\""));
+
+                lblInstallStatus.Text = "Bloatware temizleme tamamlandı.";
+
+                int removed = 0;
+                int idx = result.IndexOf("REMOVED:", StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    string num = new string(result.Substring(idx + 8)
+                        .TrimStart().TakeWhile(char.IsDigit).ToArray());
+                    int.TryParse(num, out removed);
+                }
+
+                MessageBox.Show(
+                    $"Temizlik tamamlandı.\n\nKaldırılan uygulama sayısı: {removed}\n\n" +
+                    "(Zaten kurulu olmayan uygulamalar sayılmaz.)",
+                    "Bloatware Temizlendi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Bloatware temizleme sırasında hata: {ex.Message}", "Hata",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                installStatusPanel.Visible = false;
                 progressBarInstall.Style = ProgressBarStyle.Continuous;
                 SetUiEnabled(true);
             }

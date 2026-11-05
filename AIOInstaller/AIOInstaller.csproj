@@ -15,4 +15,8 @@
   <ItemGroup>
     <Content Include="app.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Uzak katalog JSON'unu ayrıştırmak için DataContractJsonSerializer -->
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
 </Project>
