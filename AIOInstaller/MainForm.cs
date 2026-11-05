@@ -46,8 +46,8 @@ namespace AIOInstaller
         private CancellationTokenSource installCts;
         private Button btnStopInstall;
 
+        private Button btnFullSetup;
         private Button btnAdd;
-        private Button btnInstall;
         private Button btnRemove;
         private Button btnOpenDatabase;
         private Button btnSync;
@@ -400,6 +400,15 @@ namespace AIOInstaller
                 return btn;
             };
 
+            // ── Kategori: OTOMATİK (en üstte, öne çıkan) ──
+            addCategoryLabel(sideFlow, "🚀 Otomatik");
+
+            btnFullSetup = createSideButton("🚀 TAM KURULUM", C(234, 88, 12));
+            btnFullSetup.Size = new Size(150, 44);
+            btnFullSetup.Font = UiFont(9.5F, FontStyle.Bold);
+            btnFullSetup.Click += BtnFullSetup_Click;
+            sideFlow.Controls.Add(btnFullSetup);
+
             // ── Kategori: SEÇİM ──
             addCategoryLabel(sideFlow, "📋 Seçim");
 
@@ -421,10 +430,6 @@ namespace AIOInstaller
             btnAdd = createSideButton("➕ Program Ekle", C(16, 185, 129));
             btnAdd.Click += BtnAdd_Click;
             sideFlow.Controls.Add(btnAdd);
-
-            btnInstall = createSideButton("▶ Kur", C(59, 130, 246));
-            btnInstall.Click += BtnInstall_Click;
-            sideFlow.Controls.Add(btnInstall);
 
             btnRemove = createSideButton("🗑 Sil", C(239, 68, 68));
             btnRemove.Click += BtnRemove_Click;
@@ -488,60 +493,6 @@ namespace AIOInstaller
             this.Controls.Add(rightPanel);          // Right
 
             this.ResumeLayout(false);
-        }
-
-        private Button CreateModernButton(string text, Color backColor)
-        {
-            Button btn = new Button
-            {
-                Text = text,
-                Size = new Size(130, 42),
-                BackColor = backColor,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = UiFont(9F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(4, 0, 4, 0)
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(
-                Math.Min(255, backColor.R + 30),
-                Math.Min(255, backColor.G + 30),
-                Math.Min(255, backColor.B + 30)
-            );
-            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(
-                Math.Max(0, backColor.R - 30),
-                Math.Max(0, backColor.G - 30),
-                Math.Max(0, backColor.B - 30)
-            );
-            return btn;
-        }
-
-        private Button CreateToolButton(string text, Color backColor)
-        {
-            Button btn = new Button
-            {
-                Text = text,
-                Size = new Size(145, 33),
-                BackColor = backColor,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = UiFont(9F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 8, 0)
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(
-                Math.Min(255, backColor.R + 30),
-                Math.Min(255, backColor.G + 30),
-                Math.Min(255, backColor.B + 30)
-            );
-            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(
-                Math.Max(0, backColor.R - 30),
-                Math.Max(0, backColor.G - 30),
-                Math.Max(0, backColor.B - 30)
-            );
-            return btn;
         }
 
         // Programatik icon oluşturma
@@ -718,29 +669,6 @@ namespace AIOInstaller
             _ = InstallSelectedProgramsAsync();
         }
 
-        private void BtnInstall_Click(object sender, EventArgs e)
-        {
-            gridPrograms.EndEdit();
-            
-            // Eğer tikli olan varsa toplu kurulumu başlat
-            if (gridPrograms.Rows.Cast<DataGridViewRow>().Any(r => IsRowChecked(r)))
-            {
-                _ = InstallSelectedProgramsAsync();
-                return;
-            }
-
-            // Tikli yoksa ama seçili/vurgulu olan varsa onu kur
-            if (gridPrograms.SelectedRows.Count > 0)
-            {
-                InstallSelectedProgram();
-            }
-            else
-            {
-                MessageBox.Show("Lütfen kurulacak programları yanındaki kutucuktan seçin veya satıra tıklayın.", "Uyarı", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
         private void GridPrograms_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && gridPrograms.SelectedRows.Count > 0)
@@ -830,97 +758,12 @@ namespace AIOInstaller
 
                 installStatusPanel.Visible = true;
                 btnStopInstall.Enabled = true;
-                progressBarInstall.Minimum = 0;
-                progressBarInstall.Maximum = plannedRows.Count;
-                progressBarInstall.Value = 0;
 
-                int successCount = 0;
-                for (int i = 0; i < plannedRows.Count; i++)
-                {
-                    if (installCts.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    var row = plannedRows[i];
-                    var program = (ProgramInfo)row.Tag;
-
-                    // Kullanıcı sıradaki programın tikini kaldırdıysa es geç
-                    if (!IsRowChecked(row))
-                    {
-                        SetRowStatus(row, "Atlandı", C(238, 238, 238));
-                        progressBarInstall.Value = i + 1;
-                        continue;
-                    }
-
-                    SetRowStatus(row, "Kuruluyor...", C(255, 249, 196));
-                    lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) Kuruluyor: {program.Name}";
-                    progressBarInstall.Value = i;
-
-                    Process proc;
-                    bool started = ProgramManager.StartInstallProcess(program, out proc);
-                    if (!started)
-                    {
-                        SetRowStatus(row, "Hata", C(255, 205, 210));
-                    }
-                    else
-                    {
-                        successCount++;
-
-                        // Process nesnesi alınamadıysa takip edemeyiz: sadece başlatıldı say
-                        if (proc == null)
-                        {
-                            SetRowStatus(row, "Başlatıldı", C(200, 230, 201));
-                        }
-                        else
-                        {
-                            // İşlem bitene kadar bekle (iptal olursa best-effort durdur)
-                            while (!proc.HasExited)
-                            {
-                                if (installCts.IsCancellationRequested)
-                                {
-                                    TryStopProcess(proc);
-                                    break;
-                                }
-
-                                await Task.Delay(500);
-                            }
-
-                            if (installCts.IsCancellationRequested)
-                            {
-                                if (proc.HasExited)
-                                {
-                                    SetRowStatus(row, $"Durduruldu (Çıkış: {proc.ExitCode})", C(255, 205, 210));
-                                }
-                                else
-                                {
-                                    SetRowStatus(row, "Durduruldu", C(255, 205, 210));
-                                }
-                                break;
-                            }
-
-                            SetRowStatus(row, $"Tamamlandı (Çıkış: {proc.ExitCode})", C(200, 230, 201));
-                        }
-                    }
-
-                    progressBarInstall.Value = i + 1;
-                }
+                int successCount = await RunInstallLoopAsync(plannedRows);
 
                 if (installCts.IsCancellationRequested)
                 {
                     lblInstallStatus.Text = "Kurulum durduruldu. (Sıradakiler iptal edildi)";
-                    // Kalanları "İptal edildi" olarak işaretle (hala tikliyse)
-                    foreach (var row in plannedRows)
-                    {
-                        if (row.Tag != null && IsRowChecked(row))
-                        {
-                            string status = Convert.ToString(row.Cells[ColStatus].Value ?? "");
-                            if (status == "Bekliyor")
-                            {
-                                SetRowStatus(row, "İptal edildi", C(245, 245, 245));
-                            }
-                        }
-                    }
                 }
                 else
                 {
@@ -942,14 +785,118 @@ namespace AIOInstaller
             }
         }
 
+        /// <summary>
+        /// Verilen satırları yukarıdan aşağı sırayla kurar. Çağıran taraf isInstalling,
+        /// installCts ve UI durumunu (panel/buton) ayarlamış olmalıdır. İşlenen (başlatılan)
+        /// program sayısını döndürür. Hem "Seçilenleri Kur" hem de "Tam Kurulum" bunu kullanır.
+        /// </summary>
+        private async Task<int> RunInstallLoopAsync(List<DataGridViewRow> plannedRows)
+        {
+            progressBarInstall.Style = ProgressBarStyle.Continuous;
+            progressBarInstall.Minimum = 0;
+            progressBarInstall.Maximum = plannedRows.Count;
+            progressBarInstall.Value = 0;
+
+            int successCount = 0;
+            for (int i = 0; i < plannedRows.Count; i++)
+            {
+                if (installCts.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var row = plannedRows[i];
+                var program = (ProgramInfo)row.Tag;
+
+                // Kullanıcı sıradaki programın tikini kaldırdıysa es geç
+                if (!IsRowChecked(row))
+                {
+                    SetRowStatus(row, "Atlandı", C(238, 238, 238));
+                    progressBarInstall.Value = i + 1;
+                    continue;
+                }
+
+                SetRowStatus(row, "Kuruluyor...", C(255, 249, 196));
+                lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) Kuruluyor: {program.Name}";
+                progressBarInstall.Value = i;
+
+                Process proc;
+                bool started = ProgramManager.StartInstallProcess(program, out proc);
+                if (!started)
+                {
+                    SetRowStatus(row, "Hata", C(255, 205, 210));
+                }
+                else
+                {
+                    successCount++;
+
+                    // Process nesnesi alınamadıysa takip edemeyiz: sadece başlatıldı say
+                    if (proc == null)
+                    {
+                        SetRowStatus(row, "Başlatıldı", C(200, 230, 201));
+                    }
+                    else
+                    {
+                        // İşlem bitene kadar bekle (iptal olursa best-effort durdur)
+                        while (!proc.HasExited)
+                        {
+                            if (installCts.IsCancellationRequested)
+                            {
+                                TryStopProcess(proc);
+                                break;
+                            }
+
+                            await Task.Delay(500);
+                        }
+
+                        if (installCts.IsCancellationRequested)
+                        {
+                            if (proc.HasExited)
+                            {
+                                SetRowStatus(row, $"Durduruldu (Çıkış: {proc.ExitCode})", C(255, 205, 210));
+                            }
+                            else
+                            {
+                                SetRowStatus(row, "Durduruldu", C(255, 205, 210));
+                            }
+                            break;
+                        }
+
+                        SetRowStatus(row, $"Tamamlandı (Çıkış: {proc.ExitCode})", C(200, 230, 201));
+                    }
+                }
+
+                progressBarInstall.Value = i + 1;
+            }
+
+            if (installCts.IsCancellationRequested)
+            {
+                // Kalanları "İptal edildi" olarak işaretle (hala tikliyse)
+                foreach (var row in plannedRows)
+                {
+                    if (row.Tag != null && IsRowChecked(row))
+                    {
+                        string status = Convert.ToString(row.Cells[ColStatus].Value ?? "");
+                        if (status == "Bekliyor")
+                        {
+                            SetRowStatus(row, "İptal edildi", C(245, 245, 245));
+                        }
+                    }
+                }
+            }
+
+            return successCount;
+        }
+
         private void SetUiEnabled(bool enabled)
         {
+            btnFullSetup.Enabled = enabled;
+
             btnSelectAll.Enabled = enabled;
             btnDeselectAll.Enabled = enabled;
             btnInstallSelected.Enabled = enabled;
 
             btnAdd.Enabled = enabled;
-            btnInstall.Enabled = enabled;
             btnRemove.Enabled = enabled;
             btnOpenDatabase.Enabled = enabled;
             btnSync.Enabled = enabled;
@@ -1238,6 +1185,274 @@ namespace AIOInstaller
                     "Set-Service -Name bits -StartupType Automatic\r\n" +
                     "Start-Service -Name bits -ErrorAction SilentlyContinue",
                     "Update açma");
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // TAM KURULUM — tek tuşla komple sistem hazırlama akışı
+        // ══════════════════════════════════════════════════════════════════
+        private async void BtnFullSetup_Click(object sender, EventArgs e)
+        {
+            if (isInstalling)
+            {
+                return;
+            }
+
+            DialogResult confirm = MessageBox.Show(
+                "TAM KURULUM başlatılacak. Sırasıyla şunlar yapılacak:\n\n" +
+                "1) UAC (Kullanıcı Hesabı Denetimi) kapatılacak\n" +
+                "2) Windows Defender kapatılacak (kapanmazsa elle kapatmanız istenir)\n" +
+                "3) Wi-Fi'ye bağlanmak isteyip istemediğiniz sorulacak (TNC_AP)\n" +
+                "4) Wi-Fi bağlanırsa Windows Update başlatılacak\n" +
+                "5) Listedeki TÜM programlar sırayla kurulacak\n" +
+                "6) PowerShell (SMB) ayarları uygulanacak\n" +
+                "7) Word/Excel/PowerPoint/Outlook masaüstü kısayolları oluşturulacak\n\n" +
+                "Devam etmek istiyor musunuz?",
+                "🚀 Tam Kurulum",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+            {
+                return;
+            }
+
+            await RunFullSetupAsync();
+        }
+
+        private async Task RunFullSetupAsync()
+        {
+            bool uacDisabled = false;
+            try
+            {
+                isInstalling = true;
+                installCts = new CancellationTokenSource();
+                SetUiEnabled(false);
+                installStatusPanel.Visible = true;
+                btnStopInstall.Enabled = false; // sistem adımlarında durdurma yok
+                progressBarInstall.Style = ProgressBarStyle.Marquee;
+
+                // ── 1) UAC kapat ──────────────────────────────────────────
+                lblInstallStatus.Text = "1/7 — UAC kapatılıyor...";
+                string uacResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                    "$p='HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System'\r\n" +
+                    "if (-not (Test-Path $p)) { New-Item -Path $p -Force | Out-Null }\r\n" +
+                    "Set-ItemProperty -Path $p -Name 'ConsentPromptBehaviorAdmin' -Value 0 -Type DWord -Force\r\n" +
+                    "Set-ItemProperty -Path $p -Name 'PromptOnSecureDesktop' -Value 0 -Type DWord -Force\r\n" +
+                    "Set-ItemProperty -Path $p -Name 'EnableLUA' -Value 0 -Type DWord -Force\r\n" +
+                    "'OK'"));
+                uacDisabled = uacResult.IndexOf("OK", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                // ── 2) Defender kapat + doğrulama döngüsü ─────────────────
+                lblInstallStatus.Text = "2/7 — Windows Defender kapatılıyor...";
+                await Task.Run(() => ProgramManager.RunPowerShellScript(
+                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                    "Set-MpPreference -DisableRealtimeMonitoring $true\r\n" +
+                    "Set-MpPreference -DisableBehaviorMonitoring $true\r\n" +
+                    "Set-MpPreference -DisableIOAVProtection $true\r\n" +
+                    "Set-MpPreference -DisableScriptScanning $true\r\n" +
+                    "Set-MpPreference -DisableArchiveScanning $true\r\n" +
+                    "Set-MpPreference -DisableIntrusionPreventionSystem $true\r\n" +
+                    "'OK'"));
+
+                bool? defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
+                bool defenderOpened = false;
+                while (defState == true) // hâlâ açık
+                {
+                    if (!defenderOpened)
+                    {
+                        await Task.Run(() => ProgramManager.RunPowerShellScript(
+                            "Start-Process 'windowsdefender:' -ErrorAction SilentlyContinue", 15000));
+                        defenderOpened = true;
+                    }
+
+                    DialogResult r = MessageBox.Show(
+                        "Windows Defender otomatik kapatılamadı (büyük olasılıkla 'Kurcalama Koruması/Tamper Protection' açık).\n\n" +
+                        "Lütfen açılan Windows Güvenliği penceresinden:\n" +
+                        "  • Virüs ve tehdit koruması → Ayarları yönet\n" +
+                        "  • 'Gerçek zamanlı koruma'yı ELLE kapatın\n\n" +
+                        "Kapattıktan sonra 'Tamam'a basın (tekrar kontrol edilecek).\n" +
+                        "'İptal' derseniz bu adım atlanır ve kuruluma devam edilir.",
+                        "Defender elle kapatılmalı",
+                        MessageBoxButtons.OKCancel,
+                        MessageBoxIcon.Warning);
+
+                    if (r == DialogResult.Cancel)
+                    {
+                        break;
+                    }
+
+                    lblInstallStatus.Text = "2/7 — Defender durumu kontrol ediliyor...";
+                    defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
+                }
+
+                // ── 3) Wi-Fi sorusu ───────────────────────────────────────
+                bool wifiConnected = false;
+                lblInstallStatus.Text = "3/7 — Wi-Fi kartı kontrol ediliyor...";
+                bool hasWifi = await Task.Run(() => ProgramManager.HasWifiAdapter());
+
+                if (hasWifi)
+                {
+                    DialogResult wifiAns = MessageBox.Show(
+                        "Wi-Fi kartı bulundu.\n\n'TNC_AP' ağına bağlanılsın mı?",
+                        "Wi-Fi Bağlantısı",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (wifiAns == DialogResult.Yes)
+                    {
+                        lblInstallStatus.Text = "3/7 — TNC_AP ağına bağlanılıyor...";
+                        string wifiResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                            "$ssid='TNC_AP'; $key='tekno.2453'\r\n" +
+                            "$xml = '<?xml version=''1.0''?><WLANProfile xmlns=''http://www.microsoft.com/networking/WLAN/profile/v1''><name>' + $ssid + '</name><SSIDConfig><SSID><name>' + $ssid + '</name></SSID></SSIDConfig><connectionType>ESS</connectionType><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption><sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>' + $key + '</keyMaterial></sharedKey></security></MSM></WLANProfile>'\r\n" +
+                            "$f = Join-Path $env:TEMP 'aio_wifi.xml'\r\n" +
+                            "$xml | Out-File -FilePath $f -Encoding ASCII\r\n" +
+                            "netsh wlan add profile filename=\"$f\" user=all | Out-Null\r\n" +
+                            "netsh wlan connect name=\"$ssid\" ssid=\"$ssid\" | Out-Null\r\n" +
+                            "Start-Sleep -Seconds 7\r\n" +
+                            "$st = (netsh wlan show interfaces | Out-String)\r\n" +
+                            "Remove-Item $f -ErrorAction SilentlyContinue\r\n" +
+                            "if ($st -match 'TNC_AP') { 'CONNECTED' } else { 'NOTCONN' }",
+                            60000));
+
+                        wifiConnected = wifiResult.IndexOf("CONNECTED", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        if (!wifiConnected)
+                        {
+                            MessageBox.Show(
+                                "TNC_AP ağına bağlanılamadı. (Ağ kapsama alanında olmayabilir veya şifre değişmiş olabilir.)\n" +
+                                "Windows Update adımı atlanacak, kuruluma devam edilecek.",
+                                "Wi-Fi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+                else
+                {
+                    lblInstallStatus.Text = "3/7 — Wi-Fi kartı bulunamadı, atlanıyor...";
+                }
+
+                // ── 4) Windows Update (yalnızca Wi-Fi bağlıysa) ───────────
+                if (wifiConnected)
+                {
+                    lblInstallStatus.Text = "4/7 — Windows Update başlatılıyor (arka planda)...";
+                    await Task.Run(() => ProgramManager.RunPowerShellScript(
+                        "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                        "Set-Service -Name wuauserv -StartupType Automatic\r\n" +
+                        "Start-Service -Name wuauserv\r\n" +
+                        "Set-Service -Name UsoSvc -StartupType Automatic\r\n" +
+                        "Start-Service -Name UsoSvc\r\n" +
+                        "Set-Service -Name bits -StartupType Automatic\r\n" +
+                        "Start-Service -Name bits\r\n" +
+                        "try { (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow() } catch {}\r\n" +
+                        "Start-Process 'UsoClient.exe' -ArgumentList 'StartInteractiveScan' -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                        "Start-Process 'ms-settings:windowsupdate' -ErrorAction SilentlyContinue\r\n" +
+                        "'OK'"));
+                }
+
+                // ── 5) Tüm programları sırayla kur ────────────────────────
+                var plannedRows = new List<DataGridViewRow>();
+                foreach (DataGridViewRow row in gridPrograms.Rows)
+                {
+                    if (row.Tag == null) continue;
+                    var prog = (ProgramInfo)row.Tag;
+                    bool fileExists = File.Exists(
+                        System.IO.Path.Combine(ProgramManager.DatabaseFolder, prog.FileName ?? ""));
+                    if (fileExists)
+                    {
+                        row.Cells[ColSelect].Value = true; // Tam Kurulum: hepsini işaretle
+                        plannedRows.Add(row);
+                    }
+                }
+
+                if (plannedRows.Count > 0)
+                {
+                    btnStopInstall.Enabled = true; // kurulum aşamasında durdurulabilir
+                    lblInstallStatus.Text = $"5/7 — {plannedRows.Count} program kuruluyor...";
+                    int sc = await RunInstallLoopAsync(plannedRows);
+                    btnStopInstall.Enabled = false;
+
+                    if (installCts.IsCancellationRequested)
+                    {
+                        MessageBox.Show("Program kurulumu durduruldu. Tam Kurulum iptal edildi.",
+                            "İptal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+                else
+                {
+                    lblInstallStatus.Text = "5/7 — Kurulacak program yok, atlanıyor...";
+                }
+
+                progressBarInstall.Style = ProgressBarStyle.Marquee;
+
+                // ── 6) PowerShell (SMB) ayarları ──────────────────────────
+                lblInstallStatus.Text = "6/7 — SMB ayarları uygulanıyor...";
+                await Task.Run(() => ProgramManager.RunPowerShellScript(
+                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                    "Set-SmbClientConfiguration -EnableInsecureGuestLogons $true -Force\r\n" +
+                    "Set-SmbClientConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                    "Set-SmbServerConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                    "'OK'"));
+
+                // ── 7) Office masaüstü kısayolları ────────────────────────
+                lblInstallStatus.Text = "7/7 — Office kısayolları oluşturuluyor...";
+                string officeResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                    "$apps = [ordered]@{ 'Word'='WINWORD.EXE'; 'Excel'='EXCEL.EXE'; 'PowerPoint'='POWERPNT.EXE'; 'Outlook'='OUTLOOK.EXE' }\r\n" +
+                    "$ws = New-Object -ComObject WScript.Shell\r\n" +
+                    "$desk = [Environment]::GetFolderPath('CommonDesktopDirectory')\r\n" +
+                    "if (-not $desk) { $desk = [Environment]::GetFolderPath('Desktop') }\r\n" +
+                    "$made = @()\r\n" +
+                    "foreach ($name in $apps.Keys) {\r\n" +
+                    "  $exe = $apps[$name]; $path = $null\r\n" +
+                    "  foreach ($root in @(('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe), ('HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe))) {\r\n" +
+                    "    $v = (Get-ItemProperty -Path $root -ErrorAction SilentlyContinue).'(default)'\r\n" +
+                    "    if ($v -and (Test-Path $v)) { $path = $v; break }\r\n" +
+                    "  }\r\n" +
+                    "  if ($path) {\r\n" +
+                    "    $lnk = $ws.CreateShortcut((Join-Path $desk ($name + '.lnk')))\r\n" +
+                    "    $lnk.TargetPath = $path; $lnk.Save(); $made += $name\r\n" +
+                    "  }\r\n" +
+                    "}\r\n" +
+                    "($made -join ',')"));
+
+                // ── Bitti ─────────────────────────────────────────────────
+                lblInstallStatus.Text = "Tam Kurulum tamamlandı.";
+
+                string officeInfo = string.IsNullOrWhiteSpace(officeResult) || officeResult.StartsWith("ERR")
+                    ? "⚠ Office bulunamadı — kısayol oluşturulamadı."
+                    : $"✅ Office kısayolları oluşturuldu: {officeResult}";
+
+                string uacInfo = uacDisabled
+                    ? "✅ UAC kapatıldı. (TAM etki için bilgisayarı yeniden başlatın.)"
+                    : "⚠ UAC kapatılamadı.";
+
+                MessageBox.Show(
+                    "🚀 TAM KURULUM TAMAMLANDI!\n\n" +
+                    uacInfo + "\n" +
+                    officeInfo + "\n\n" +
+                    "Not: UAC değişikliğinin tam olarak etkin olması için bilgisayarı yeniden başlatmanız önerilir.",
+                    "İşlem Bitti",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Tam Kurulum sırasında hata oluştu:\n{ex.Message}",
+                    "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                isInstalling = false;
+                if (installCts != null)
+                {
+                    installCts.Dispose();
+                    installCts = null;
+                }
+                btnStopInstall.Enabled = false;
+                progressBarInstall.Style = ProgressBarStyle.Continuous;
+                SetUiEnabled(true);
             }
         }
 

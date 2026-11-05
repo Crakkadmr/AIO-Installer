@@ -424,5 +424,78 @@ namespace AIOInstaller
 
             return (addedCount, removedCount);
         }
+
+        /// <summary>
+        /// Bir PowerShell betiğini (uygulama zaten yönetici olduğu için ek UAC istemeden)
+        /// çalıştırır, pencere açmaz ve stdout+stderr çıktısını metin olarak döndürür.
+        /// Tam Kurulum orkestrasyonunda adımların sonucunu okumak için kullanılır.
+        /// </summary>
+        public static string RunPowerShellScript(string scriptContent, int timeoutMs = 180000)
+        {
+            string tmpFile = null;
+            try
+            {
+                tmpFile = Path.Combine(Path.GetTempPath(), $"aio_{Guid.NewGuid():N}.ps1");
+                File.WriteAllText(tmpFile, scriptContent, new System.Text.UTF8Encoding(false));
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{tmpFile}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using (var proc = Process.Start(startInfo))
+                {
+                    string output = proc.StandardOutput.ReadToEnd();
+                    string error = proc.StandardError.ReadToEnd();
+                    if (!proc.WaitForExit(timeoutMs))
+                    {
+                        try { proc.Kill(); } catch { }
+                    }
+                    return ((output ?? "") + (error ?? "")).Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                return "ERR:" + ex.Message;
+            }
+            finally
+            {
+                try { if (tmpFile != null) File.Delete(tmpFile); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Windows Defender gerçek zamanlı korumasının açık olup olmadığını döndürür.
+        /// true=açık, false=kapalı, null=durum okunamadı.
+        /// </summary>
+        public static bool? IsDefenderRealtimeOn()
+        {
+            string result = RunPowerShellScript(
+                "try { if ((Get-MpComputerStatus).RealTimeProtectionEnabled) { 'ON' } else { 'OFF' } } catch { 'UNK' }",
+                30000);
+
+            if (result.IndexOf("ON", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                result.IndexOf("OFF", StringComparison.OrdinalIgnoreCase) < 0)
+                return true;
+            if (result.IndexOf("OFF", StringComparison.OrdinalIgnoreCase) >= 0)
+                return false;
+            return null;
+        }
+
+        /// <summary>
+        /// Sistemde bir kablosuz (Wi-Fi) ağ arayüzü var mı?
+        /// </summary>
+        public static bool HasWifiAdapter()
+        {
+            string result = RunPowerShellScript(
+                "try { if (Get-NetAdapter -ErrorAction Stop | Where-Object { $_.PhysicalMediaType -like '*802.11*' -or $_.InterfaceDescription -like '*Wireless*' -or $_.Name -like '*Wi-Fi*' }) { 'YES' } else { 'NO' } } catch { if (netsh wlan show interfaces 2>$null | Select-String 'SSID') { 'YES' } else { 'NO' } }",
+                30000);
+            return result.IndexOf("YES", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
     }
 }
