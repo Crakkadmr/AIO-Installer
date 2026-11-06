@@ -1211,8 +1211,8 @@ namespace AIOInstaller
                 "TAM KURULUM başlatılacak. Sırasıyla şunlar yapılacak:\n\n" +
                 "1) UAC (Kullanıcı Hesabı Denetimi) kapatılacak\n" +
                 "2) Windows Defender kapatılacak (kapanmazsa elle kapatmanız istenir)\n" +
-                "3) Wi-Fi'ye bağlanmak isteyip istemediğiniz sorulacak (TNC_AP)\n" +
-                "4) Wi-Fi bağlanırsa Windows Update başlatılacak\n" +
+                "3) Wi-Fi kartı varsa TNC_AP'ye bağlanmak isteyip istemediğiniz sorulacak, ardından internet kontrol edilecek\n" +
+                "4) İnternet varsa (Wi-Fi veya kablolu) Windows Update başlatılacak\n" +
                 "5) Listedeki TÜM programlar sırayla kurulacak\n" +
                 "6) PowerShell (SMB) ayarları uygulanacak\n" +
                 "7) Word/Excel/PowerPoint/Outlook masaüstü kısayolları oluşturulacak\n\n" +
@@ -1331,18 +1331,28 @@ namespace AIOInstaller
                         {
                             MessageBox.Show(
                                 "TNC_AP ağına bağlanılamadı. (Ağ kapsama alanında olmayabilir veya şifre değişmiş olabilir.)\n" +
-                                "Windows Update adımı atlanacak, kuruluma devam edilecek.",
+                                "Kablolu bağlantı varsa onunla devam edilecek.",
                                 "Wi-Fi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
-                else
+
+                // ── 3b) İnternet kontrolü (Wi-Fi veya kablolu) ────────────
+                lblInstallStatus.Text = hasWifi
+                    ? "3/7 — İnternet bağlantısı kontrol ediliyor..."
+                    : "3/7 — Wi-Fi kartı yok, kablolu bağlantı kontrol ediliyor...";
+                bool internetAvailable = await Task.Run(() => ProgramManager.HasInternetConnection());
+
+                if (!internetAvailable)
                 {
-                    lblInstallStatus.Text = "3/7 — Wi-Fi kartı bulunamadı, atlanıyor...";
+                    MessageBox.Show(
+                        "İnternet bağlantısı bulunamadı (Wi-Fi veya kablolu).\n" +
+                        "Windows Update adımı atlanacak, kuruluma devam edilecek.",
+                        "İnternet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
 
-                // ── 4) Windows Update (yalnızca Wi-Fi bağlıysa) ───────────
-                if (wifiConnected)
+                // ── 4) Windows Update (internet varsa) ────────────────────
+                if (internetAvailable)
                 {
                     lblInstallStatus.Text = "4/7 — Windows Update başlatılıyor (arka planda)...";
                     await Task.Run(() => ProgramManager.RunPowerShellScript(

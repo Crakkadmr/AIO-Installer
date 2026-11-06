@@ -497,5 +497,27 @@ namespace AIOInstaller
                 30000);
             return result.IndexOf("YES", StringComparison.OrdinalIgnoreCase) >= 0;
         }
+
+        /// <summary>
+        /// Herhangi bir bağlantı (kablolu veya Wi-Fi) üzerinden internete erişim var mı?
+        /// Önce Windows ağ profillerine (NCSI) bakar, sonra msftconnecttest.com'a HTTP isteği atar.
+        /// Bağlantı yeni kurulduysa NCSI geç güncellenebildiği için birkaç kez dener.
+        /// </summary>
+        public static bool HasInternetConnection()
+        {
+            string result = RunPowerShellScript(
+                "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                "for ($i = 0; $i -lt 3; $i++) {\r\n" +
+                "  if (Get-NetConnectionProfile | Where-Object { $_.IPv4Connectivity -eq 'Internet' -or $_.IPv6Connectivity -eq 'Internet' }) { 'NET_OK'; return }\r\n" +
+                "  try {\r\n" +
+                "    $r = Invoke-WebRequest -Uri 'http://www.msftconnecttest.com/connecttest.txt' -UseBasicParsing -TimeoutSec 5\r\n" +
+                "    if ($r.Content -like '*Microsoft Connect Test*') { 'NET_OK'; return }\r\n" +
+                "  } catch {}\r\n" +
+                "  Start-Sleep -Seconds 3\r\n" +
+                "}\r\n" +
+                "'NET_NO'",
+                60000);
+            return result.IndexOf("NET_OK", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
     }
 }
