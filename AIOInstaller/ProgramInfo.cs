@@ -15,6 +15,11 @@ namespace AIOInstaller
         public string Version { get; set; }
         public DateTime AddedDate { get; set; }
         public long FileSize { get; set; }
+        /// <summary>
+        /// Sessiz kurulum argümanları (katalogdan indirilen uygulamalarda doldurulur).
+        /// Boşsa .exe etkileşimli çalışır; .msi her durumda msiexec ile sessiz kurulur.
+        /// </summary>
+        public string SilentArgs { get; set; }
 
         public ProgramInfo()
         {

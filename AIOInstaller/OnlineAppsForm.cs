@@ -1118,6 +1118,9 @@ namespace AIOInstaller
                     try { if (File.Exists(destFile)) File.Delete(destFile); } catch { }
                     return false;
                 }
+
+                // Katalogdaki sessiz kurulum parametrelerini kurulum kaydına taşı
+                try { ProgramManager.SetSilentArgs(Path.GetFileName(destFile), app.SilentArgs); } catch { }
                 return true;
             }
             catch (System.Net.WebException wex) when (

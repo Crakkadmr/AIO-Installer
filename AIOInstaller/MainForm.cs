@@ -775,9 +775,11 @@ namespace AIOInstaller
                 }
                 else
                 {
-                    lblInstallStatus.Text = $"Bitti: {successCount}/{plannedRows.Count} program işlendi.";
-                    MessageBox.Show($"{successCount} program sırayla işlendi. Detay için 'Durum' sütununa bakabilirsiniz.", "Bilgi",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    lblInstallStatus.Text = $"Bitti: {successCount}/{plannedRows.Count} program başarıyla kuruldu.";
+                    MessageBox.Show(
+                        $"{successCount}/{plannedRows.Count} program başarıyla kuruldu. Detay için 'Durum' sütununa bakabilirsiniz." +
+                        (rebootRequired ? "\n\nBazı programlar için bilgisayarın yeniden başlatılması gerekiyor." : ""),
+                        "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             finally
@@ -793,10 +795,13 @@ namespace AIOInstaller
             }
         }
 
+        /// <summary>Son kurulum turunda en az bir program yeniden başlatma istedi mi (3010/1641).</summary>
+        private bool rebootRequired;
+
         /// <summary>
         /// Verilen satırları yukarıdan aşağı sırayla kurar. Çağıran taraf isInstalling,
-        /// installCts ve UI durumunu (panel/buton) ayarlamış olmalıdır. İşlenen (başlatılan)
-        /// program sayısını döndürür. Hem "Seçilenleri Kur" hem de "Tam Kurulum" bunu kullanır.
+        /// installCts ve UI durumunu (panel/buton) ayarlamış olmalıdır. Başarıyla kurulan
+        /// (çıkış kodu 0/3010/1641 veya takip edilemeyen) program sayısını döndürür. Hem "Seçilenleri Kur" hem de "Tam Kurulum" bunu kullanır.
         /// </summary>
         private async Task<int> RunInstallLoopAsync(List<DataGridViewRow> plannedRows)
         {
@@ -806,6 +811,7 @@ namespace AIOInstaller
             progressBarInstall.Value = 0;
 
             int successCount = 0;
+            rebootRequired = false;
             for (int i = 0; i < plannedRows.Count; i++)
             {
                 if (installCts.IsCancellationRequested)
@@ -828,50 +834,91 @@ namespace AIOInstaller
                 lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) Kuruluyor: {program.Name}";
                 progressBarInstall.Value = i;
 
-                Process proc;
-                bool started = ProgramManager.StartInstallProcess(program, out proc);
-                if (!started)
+                // 1618 (başka kurulum sürüyor — ör. arka planda Windows Update) için birkaç kez bekleyip tekrar dene
+                const int maxBusyRetries = 3;
+                bool stopped = false;
+                for (int attempt = 0; ; attempt++)
                 {
-                    SetRowStatus(row, "Hata", C(255, 205, 210));
-                }
-                else
-                {
-                    successCount++;
+                    Process proc;
+                    bool started = ProgramManager.StartInstallProcess(program, out proc);
+                    if (!started)
+                    {
+                        SetRowStatus(row, "Hata", C(255, 205, 210));
+                        break;
+                    }
 
                     // Process nesnesi alınamadıysa takip edemeyiz: sadece başlatıldı say
                     if (proc == null)
                     {
+                        successCount++;
                         SetRowStatus(row, "Başlatıldı", C(200, 230, 201));
+                        break;
                     }
-                    else
+
+                    // İşlem bitene kadar bekle (iptal olursa best-effort durdur)
+                    while (!proc.HasExited)
                     {
-                        // İşlem bitene kadar bekle (iptal olursa best-effort durdur)
-                        while (!proc.HasExited)
-                        {
-                            if (installCts.IsCancellationRequested)
-                            {
-                                TryStopProcess(proc);
-                                break;
-                            }
-
-                            await Task.Delay(500);
-                        }
-
                         if (installCts.IsCancellationRequested)
                         {
-                            if (proc.HasExited)
-                            {
-                                SetRowStatus(row, $"Durduruldu (Çıkış: {proc.ExitCode})", C(255, 205, 210));
-                            }
-                            else
-                            {
-                                SetRowStatus(row, "Durduruldu", C(255, 205, 210));
-                            }
+                            TryStopProcess(proc);
                             break;
                         }
 
-                        SetRowStatus(row, $"Tamamlandı (Çıkış: {proc.ExitCode})", C(200, 230, 201));
+                        await Task.Delay(500);
                     }
+
+                    if (installCts.IsCancellationRequested)
+                    {
+                        SetRowStatus(row, proc.HasExited ? $"Durduruldu (Çıkış: {proc.ExitCode})" : "Durduruldu",
+                            C(255, 205, 210));
+                        stopped = true;
+                        break;
+                    }
+
+                    var (outcome, text) = ProgramManager.DescribeExitCode(proc.ExitCode);
+
+                    if (outcome == ProgramManager.InstallOutcome.Busy && attempt < maxBusyRetries)
+                    {
+                        SetRowStatus(row, $"Başka kurulum sürüyor, bekleniyor ({attempt + 1}/{maxBusyRetries})...",
+                            C(255, 249, 196));
+                        lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) {program.Name}: başka bir kurulum bitene kadar bekleniyor...";
+                        for (int w = 0; w < 60 && !installCts.IsCancellationRequested; w++)
+                        {
+                            await Task.Delay(500); // ~30 sn
+                        }
+                        if (installCts.IsCancellationRequested)
+                        {
+                            SetRowStatus(row, "Durduruldu", C(255, 205, 210));
+                            stopped = true;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    switch (outcome)
+                    {
+                        case ProgramManager.InstallOutcome.Success:
+                            successCount++;
+                            SetRowStatus(row, text, C(200, 230, 201));
+                            break;
+                        case ProgramManager.InstallOutcome.RebootRequired:
+                            successCount++;
+                            rebootRequired = true;
+                            SetRowStatus(row, text, C(220, 237, 200));
+                            break;
+                        case ProgramManager.InstallOutcome.Cancelled:
+                            SetRowStatus(row, text, C(255, 236, 179));
+                            break;
+                        default:
+                            SetRowStatus(row, text, C(255, 205, 210));
+                            break;
+                    }
+                    break;
+                }
+
+                if (stopped)
+                {
+                    break;
                 }
 
                 progressBarInstall.Value = i + 1;
@@ -1370,6 +1417,8 @@ namespace AIOInstaller
                 }
 
                 // ── 5) Tüm programları sırayla kur ────────────────────────
+                int programsOk = 0;
+                rebootRequired = false;
                 var plannedRows = new List<DataGridViewRow>();
                 foreach (DataGridViewRow row in gridPrograms.Rows)
                 {
@@ -1388,7 +1437,7 @@ namespace AIOInstaller
                 {
                     btnStopInstall.Enabled = true; // kurulum aşamasında durdurulabilir
                     lblInstallStatus.Text = $"5/7 — {plannedRows.Count} program kuruluyor...";
-                    int sc = await RunInstallLoopAsync(plannedRows);
+                    programsOk = await RunInstallLoopAsync(plannedRows);
                     btnStopInstall.Enabled = false;
 
                     if (installCts.IsCancellationRequested)
@@ -1447,9 +1496,16 @@ namespace AIOInstaller
                     ? "✅ UAC kapatıldı. (TAM etki için bilgisayarı yeniden başlatın.)"
                     : "⚠ UAC kapatılamadı.";
 
+                string programsInfo = plannedRows.Count == 0
+                    ? "⚠ Kurulacak program yoktu."
+                    : (programsOk == plannedRows.Count ? "✅ " : "⚠ ") +
+                      $"Programlar: {programsOk}/{plannedRows.Count} başarıyla kuruldu (detay 'Durum' sütununda)." +
+                      (rebootRequired ? "\n⚠ Bazı programlar yeniden başlatma istiyor." : "");
+
                 MessageBox.Show(
                     "🚀 TAM KURULUM TAMAMLANDI!\n\n" +
                     uacInfo + "\n" +
+                    programsInfo + "\n" +
                     officeInfo + "\n\n" +
                     "Not: UAC değişikliğinin tam olarak etkin olması için bilgisayarı yeniden başlatmanız önerilir.",
                     "İşlem Bitti",

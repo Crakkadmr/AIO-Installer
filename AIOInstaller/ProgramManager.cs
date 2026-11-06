@@ -290,14 +290,7 @@ namespace AIOInstaller
                     return false;
                 }
 
-                ProcessStartInfo startInfo = new ProcessStartInfo
-                {
-                    FileName = filePath,
-                    UseShellExecute = true,
-                    Verb = "runas" // Yönetici yetkisi ile çalıştır
-                };
-
-                var proc = Process.Start(startInfo);
+                var proc = Process.Start(BuildInstallStartInfo(filePath, program.SilentArgs));
 
                 if (waitForExit && proc != null)
                 {
@@ -330,14 +323,7 @@ namespace AIOInstaller
                     return false;
                 }
 
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = filePath,
-                    UseShellExecute = true,
-                    Verb = "runas"
-                };
-
-                process = Process.Start(startInfo);
+                process = Process.Start(BuildInstallStartInfo(filePath, program.SilentArgs));
                 return true;
             }
             catch (Exception ex)
@@ -346,6 +332,77 @@ namespace AIOInstaller
                     "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
+        }
+
+        /// <summary>MSI için argüman verilmemişse kullanılan varsayılan sessiz parametreler.</summary>
+        public const string DefaultMsiArgs = "/qn /norestart";
+
+        /// <summary>
+        /// Kurulum dosyasının tipine göre başlatma bilgisini üretir:
+        /// .msi → msiexec /i "dosya" + (SilentArgs veya /qn /norestart),
+        /// .exe → dosya + SilentArgs (boşsa etkileşimli), diğerleri (ör. .zip) → kabukla aç.
+        /// </summary>
+        public static ProcessStartInfo BuildInstallStartInfo(string filePath, string silentArgs)
+        {
+            string ext = (Path.GetExtension(filePath) ?? "").ToLowerInvariant();
+            string args = (silentArgs ?? "").Trim();
+
+            var psi = new ProcessStartInfo
+            {
+                UseShellExecute = true,
+                Verb = "runas", // Yönetici yetkisi ile çalıştır
+                WorkingDirectory = Path.GetDirectoryName(filePath) ?? ""
+            };
+
+            if (ext == ".msi")
+            {
+                psi.FileName = "msiexec.exe";
+                psi.Arguments = $"/i \"{filePath}\" {(args.Length > 0 ? args : DefaultMsiArgs)}";
+            }
+            else
+            {
+                psi.FileName = filePath;
+                if (ext == ".exe" && args.Length > 0)
+                    psi.Arguments = args;
+            }
+            return psi;
+        }
+
+        public enum InstallOutcome { Success, RebootRequired, Cancelled, Busy, Failed }
+
+        /// <summary>
+        /// Kurulum çıkış kodunu yorumlar (MSI/Windows Installer standart kodları + genel 0/≠0).
+        /// </summary>
+        public static (InstallOutcome outcome, string text) DescribeExitCode(int code)
+        {
+            switch (code)
+            {
+                case 0:    return (InstallOutcome.Success, "Tamamlandı");
+                case 3010: return (InstallOutcome.RebootRequired, "Tamamlandı — yeniden başlatma gerekli");
+                case 1641: return (InstallOutcome.RebootRequired, "Tamamlandı — yeniden başlatma başlatıldı");
+                case 1602: return (InstallOutcome.Cancelled, "Kullanıcı iptal etti (1602)");
+                case 1618: return (InstallOutcome.Busy, "Başka bir kurulum sürüyor (1618)");
+                case 1603: return (InstallOutcome.Failed, "Kurulum hatası (1603)");
+                case 1638: return (InstallOutcome.Failed, "Başka bir sürümü zaten kurulu (1638)");
+                default:   return (InstallOutcome.Failed, $"Hata (Çıkış: {code})");
+            }
+        }
+
+        /// <summary>
+        /// Katalogdan indirilen dosyanın kaydına sessiz kurulum argümanlarını yazar.
+        /// Dosya henüz listede değilse LoadPrograms senkronizasyonu onu ekler.
+        /// </summary>
+        public static void SetSilentArgs(string fileName, string silentArgs)
+        {
+            var programs = LoadPrograms();
+            var prog = programs.FirstOrDefault(p =>
+                string.Equals(p.FileName, fileName, StringComparison.OrdinalIgnoreCase));
+            if (prog == null) return;
+
+            string args = string.IsNullOrWhiteSpace(silentArgs) ? null : silentArgs.Trim();
+            if (prog.SilentArgs == args) return;
+            prog.SilentArgs = args;
+            SavePrograms(programs);
         }
 
         /// <summary>
