@@ -403,6 +403,9 @@ namespace AIOInstaller
             // Yerel olarak eklenen extra uygulamaları da birleştir
             MergeExtraCatalog(allApps);
 
+            // Son çekilen SolidShare dizin listesi (girişsiz de görünsün)
+            SolidShareService.MergeInto(allApps, SolidShareService.LoadCache());
+
             InitializeUi();
             if (listCategories.Items.Count > 0)
                 listCategories.SelectedIndex = 0;
@@ -478,22 +481,107 @@ namespace AIOInstaller
                 var fallback = new CatalogData { Apps = BuildCatalogue(), Profiles = DefaultProfiles() };
                 var data = await Task.Run(() => CatalogService.Load(fallback));
                 MergeExtraCatalog(data.Apps);
+                SolidShareService.MergeInto(data.Apps, SolidShareService.LoadCache());
                 allApps  = data.Apps;
                 profiles = data.Profiles ?? new List<InstallProfile>();
 
-                // Kategori listesini güncelle
-                listCategories.Items.Clear();
-                var cats = allApps.Select(a => a.Category).Distinct().OrderBy(c => c).ToList();
-                cats.Insert(0, "Tümü");
-                foreach (var c in cats) listCategories.Items.Add(c);
-                if (listCategories.Items.Count > 0) listCategories.SelectedIndex = 0;
-                else RefreshAppList();
-
+                RebuildCategories(null);
                 lblHeader.Text = "🌐 Online Program İndir";
             }
             catch
             {
                 lblHeader.Text = "🌐 Online Program İndir";
+            }
+        }
+
+        // ─── Kategori listesini yeniden kur (isteğe bağlı bir kategoriyi seç) ──
+        private void RebuildCategories(string select)
+        {
+            // Items.Clear() SelectedIndexChanged'i tetikleyip TÜM kartları bir kez boşuna kuruyordu
+            _suppressCategoryRefresh = true;
+            try
+            {
+                listCategories.BeginUpdate();
+                listCategories.Items.Clear();
+                var cats = allApps.Select(a => a.Category).Distinct().OrderBy(c => c).ToList();
+                cats.Insert(0, "Tümü");
+                foreach (var c in cats) listCategories.Items.Add(c);
+
+                int idx = select != null ? listCategories.Items.IndexOf(select) : -1;
+                if (idx < 0 && listCategories.Items.Count > 0) idx = 0;
+                listCategories.SelectedIndex = idx;
+            }
+            finally
+            {
+                listCategories.EndUpdate();
+                _suppressCategoryRefresh = false;
+            }
+            RefreshAppList();
+        }
+
+        private bool _suppressCategoryRefresh;
+
+        // ─── SolidShare katilimsiz klasöründeki tüm dosyaları getir ─────────
+        private bool _solidShareBusy;
+
+        private async void FetchSolidShareAsync()
+        {
+            if (_solidShareBusy) return;
+            if (!EnsureVipCredentials()) return;
+
+            _solidShareBusy = true;
+            lblHeader.Text = "⚡ SolidShare listesi alınıyor…";
+            string user = _vipUser, pass = _vipPass;
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var fetched = await Task.Run(() => SolidShareService.FetchAll(user, pass));
+                var listed  = fetched.Apps;
+                string errors = fetched.Errors.Count > 0
+                    ? "\n\nOkunamayan dizinler:\n• " + string.Join("\n• ", fetched.Errors)
+                    : "";
+
+                if (listed.Count == 0)
+                {
+                    lblHeader.Text = "🌐 Online Program İndir";
+                    MessageBox.Show(this,
+                        "SolidShare dizinlerinde indirilebilir dosya bulunamadı.\n" +
+                        "Sayfa yapısı değişmiş olabilir." + errors,
+                        "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                SolidShareService.SaveCache(listed);
+
+                // Önceki önbellek girdilerini at, güncel listeyi birleştir (sunucudan silinenler kaybolsun)
+                allApps.RemoveAll(SolidShareService.IsFromListing);
+                SolidShareService.MergeInto(allApps, listed);
+
+                RebuildCategories(SolidShareService.Category);
+                int apps = allApps.Count(a => a.Category == SolidShareService.Category);
+                int isos = allApps.Count(a => a.Category == SolidShareService.IsoCategory);
+                lblHeader.Text = $"⚡ SolidShare: {apps} uygulama, {isos} ISO ({sw.Elapsed.TotalSeconds:0.#} sn)";
+
+                if (errors.Length > 0)
+                    MessageBox.Show(this, "Liste alındı ama bazı dizinler okunamadı." + errors,
+                        "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (SolidShareService.UnauthorizedException ex)
+            {
+                _vipUser = null;
+                _vipPass = null;
+                lblHeader.Text = "🌐 Online Program İndir";
+                MessageBox.Show(this, ex.Message, "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                lblHeader.Text = "🌐 Online Program İndir";
+                MessageBox.Show(this, "SolidShare listesi alınamadı:\n" + ex.Message,
+                    "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _solidShareBusy = false;
             }
         }
 
@@ -660,12 +748,29 @@ namespace AIOInstaller
             btnAddLink.FlatAppearance.MouseOverBackColor = C(74, 222, 128);
             btnAddLink.Click += (s, e) => ShowAddLinkDialog();
 
+            var btnSolidShare = new Button
+            {
+                Text      = "⚡ SolidShare Tümü",
+                Size      = new Size(140, 28),
+                BackColor = C(161, 122, 6),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = UiFont(8.5F, FontStyle.Bold),
+                Cursor    = Cursors.Hand,
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnSolidShare.FlatAppearance.BorderSize = 0;
+            btnSolidShare.FlatAppearance.MouseOverBackColor = C(234, 179, 8);
+            btnSolidShare.Click += (s, e) => FetchSolidShareAsync();
+
             void PositionHeaderBtns()
             {
                 btnAddLink.Location = new Point(header.ClientSize.Width - btnAddLink.Width - 12,
                     (header.ClientSize.Height - btnAddLink.Height) / 2);
                 btnRefresh.Location = new Point(btnAddLink.Left - btnRefresh.Width - 8,
                     (header.ClientSize.Height - btnRefresh.Height) / 2);
+                btnSolidShare.Location = new Point(btnRefresh.Left - btnSolidShare.Width - 8,
+                    (header.ClientSize.Height - btnSolidShare.Height) / 2);
             }
             header.Resize += (s, e) => PositionHeaderBtns();
 
@@ -673,6 +778,7 @@ namespace AIOInstaller
             header.Controls.Add(lblSub);
             header.Controls.Add(btnRefresh);
             header.Controls.Add(btnAddLink);
+            header.Controls.Add(btnSolidShare);
 
             // ── Status / Progress Panel ──────────────────────────────────
             panelStatus = new Panel
@@ -763,7 +869,7 @@ namespace AIOInstaller
                 DrawMode      = DrawMode.OwnerDrawFixed
             };
             listCategories.DrawItem             += ListCategories_DrawItem;
-            listCategories.SelectedIndexChanged += (s, e) => RefreshAppList();
+            listCategories.SelectedIndexChanged += (s, e) => { if (!_suppressCategoryRefresh) RefreshAppList(); };
 
             var categories = allApps.Select(a => a.Category).Distinct().OrderBy(c => c).ToList();
             categories.Insert(0, "Tümü");
@@ -796,9 +902,47 @@ namespace AIOInstaller
                 BorderStyle = BorderStyle.FixedSingle
             };
             SendMessage(txtSearch.Handle, 0x1501, IntPtr.Zero, "🔍 Uygulama Ara...");
-            txtSearch.TextChanged += (s, e) => RefreshAppList();
+            // Her tuşta değil, yazmayı bıraktıktan 250 ms sonra filtrele
+            _searchDebounce = new System.Windows.Forms.Timer { Interval = 250 };
+            _searchDebounce.Tick += (s, e) => { _searchDebounce.Stop(); RefreshAppList(); };
+            txtSearch.TextChanged += (s, e) => { _searchDebounce.Stop(); _searchDebounce.Start(); };
             
             panelSearch.Controls.Add(txtSearch);
+
+            // ── Toplu seçim / indirme (Dock=Right: son eklenen en sağda) ─────
+            Button MakeBarBtn(string text, int width, Color back)
+            {
+                var b = new Button
+                {
+                    Text      = text,
+                    Dock      = DockStyle.Right,
+                    Width     = width,
+                    BackColor = back,
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font      = UiFont(9F, FontStyle.Bold),
+                    Cursor    = Cursors.Hand
+                };
+                b.FlatAppearance.BorderSize = 0;
+                return b;
+            }
+            Control Gap() => new Panel { Dock = DockStyle.Right, Width = 6 };
+
+            var btnSelectVisible = MakeBarBtn("☑ Listedekileri Seç", 150, C(51, 65, 85));
+            btnSelectVisible.Click += (s, e) => SelectFiltered(true);
+            _btnClearSelection = MakeBarBtn("✖ Temizle", 90, C(51, 65, 85));
+            _btnClearSelection.Click += (s, e) => SelectFiltered(false, clearAll: true);
+            _btnDownloadSelected = MakeBarBtn("", 190, C(34, 197, 94));
+            _btnDownloadSelected.FlatAppearance.MouseOverBackColor = C(74, 222, 128);
+            _btnDownloadSelected.Click += async (s, e) => await DownloadSelectedAsync();
+
+            panelSearch.Controls.Add(Gap());
+            panelSearch.Controls.Add(btnSelectVisible);
+            panelSearch.Controls.Add(Gap());
+            panelSearch.Controls.Add(_btnClearSelection);
+            panelSearch.Controls.Add(Gap());
+            panelSearch.Controls.Add(_btnDownloadSelected);
+            UpdateSelectionUi();
 
             panelAppList = new Panel
             {
@@ -892,21 +1036,40 @@ namespace AIOInstaller
         }
 
         // ─── Refresh right panel ──────────────────────────────────────────
+        // Kart başına ~7 pencere tutamacı + font oluşuyor; yüzlerce kartı tek seferde
+        // kurmak pencereyi donduruyordu. Önce bir sayfa göster, gerisi "Daha fazla" ile.
+        private const int PageSize = 60;
+        private List<OnlineApp> _filtered = new List<OnlineApp>();
+        private int _shown;
+        private Button _btnMore;
+        private System.Windows.Forms.Timer _searchDebounce;
+        private bool _downloadsLocked;
+
         private void RefreshAppList()
         {
             string cat  = listCategories.SelectedItem?.ToString() ?? "Tümü";
-            string search = txtSearch?.Text?.ToLowerInvariant() ?? "";
-            
-            var filtered = allApps.Where(a => 
+            string search = txtSearch?.Text?.Trim().ToLowerInvariant() ?? "";
+
+            _filtered = allApps.Where(a =>
                 (cat == "Tümü" || a.Category == cat) &&
-                (string.IsNullOrWhiteSpace(search) || a.Name.ToLowerInvariant().Contains(search) || a.Description.ToLowerInvariant().Contains(search))
+                (search.Length == 0 ||
+                 (a.Name ?? "").ToLowerInvariant().Contains(search) ||
+                 (a.Description ?? "").ToLowerInvariant().Contains(search))
             ).ToList();
+            _shown = Math.Min(PageSize, _filtered.Count);
 
             panelAppList.SuspendLayout();
-            panelAppList.Controls.Clear();
 
-            for (int i = filtered.Count - 1; i >= 0; i--)
-                panelAppList.Controls.Add(BuildAppCard(filtered[i]));
+            // Eski kartları yalnızca kaldırmak tutamaçları sızdırıyordu → dispose et
+            var old = panelAppList.Controls.Cast<Control>().ToArray();
+            panelAppList.Controls.Clear();
+            foreach (var c in old) c.Dispose();
+            _btnMore = null;
+
+            // Dock=Top: son eklenen en üste yerleşir, bu yüzden tersten ekle
+            UpdateMoreButton();
+            for (int i = _shown - 1; i >= 0; i--)
+                panelAppList.Controls.Add(BuildAppCard(_filtered[i]));
 
             panelAppList.ResumeLayout(true);
 
@@ -917,6 +1080,70 @@ namespace AIOInstaller
                     panelAppList.AutoScrollPosition = new Point(0, 0);
                 }));
             }
+        }
+
+        // ─── Sonraki sayfayı listenin altına ekle ─────────────────────────
+        private void ShowMoreApps()
+        {
+            int from = _shown;
+            int to   = Math.Min(_shown + PageSize, _filtered.Count);
+            if (from >= to) return;
+
+            panelAppList.SuspendLayout();
+            for (int i = from; i < to; i++)
+            {
+                var card = BuildAppCard(_filtered[i]);
+                panelAppList.Controls.Add(card);
+                panelAppList.Controls.SetChildIndex(card, 0); // index 0 = en altta yerleşir
+            }
+            _shown = to;
+            UpdateMoreButton();
+            panelAppList.ResumeLayout(true);
+        }
+
+        /// <summary>"Daha fazla göster" düğmesini listenin en altında tutar / kaldırır.</summary>
+        private void UpdateMoreButton()
+        {
+            int remaining = _filtered.Count - _shown;
+            if (remaining <= 0)
+            {
+                if (_btnMore != null)
+                {
+                    panelAppList.Controls.Remove(_btnMore);
+                    _btnMore.Dispose();
+                    _btnMore = null;
+                }
+                return;
+            }
+
+            if (_btnMore == null)
+            {
+                _btnMore = new Button
+                {
+                    Dock      = DockStyle.Top,
+                    Height    = 44,
+                    BackColor = C(30, 41, 59),
+                    ForeColor = C(148, 163, 184),
+                    FlatStyle = FlatStyle.Flat,
+                    Font      = CardFonts.Button,
+                    Cursor    = Cursors.Hand
+                };
+                _btnMore.FlatAppearance.BorderColor = C(51, 65, 85);
+                _btnMore.Click += (s, e) => ShowMoreApps();
+                panelAppList.Controls.Add(_btnMore);
+            }
+            _btnMore.Text = $"⬇ Daha fazla göster ({remaining} kaldı)";
+            panelAppList.Controls.SetChildIndex(_btnMore, 0);
+        }
+
+        /// <summary>Kartlarda kullanılan fontlar: kart başına yeniden oluşturmak GDI tutamacı sızdırıyordu.</summary>
+        private static class CardFonts
+        {
+            public static readonly Font Icon   = UiFont(20F);
+            public static readonly Font Name   = UiFont(11F, FontStyle.Bold);
+            public static readonly Font Desc   = UiFont(8.5F);
+            public static readonly Font Meta   = UiFont(8F);
+            public static readonly Font Button = UiFont(9.5F, FontStyle.Bold);
         }
 
         // ─── Build a single card ──────────────────────────────────────────
@@ -941,31 +1168,50 @@ namespace AIOInstaller
                 BackColor = isVip ? C(234, 179, 8) : C(59, 130, 246)
             };
 
+            // Toplu indirme seçimi (DownloadUrl ile tutulur → liste yenilense de korunur)
+            var chk = new CheckBox
+            {
+                Location  = new Point(14, 27),
+                Size      = new Size(18, 18),
+                Checked   = _selectedUrls.Contains(app.DownloadUrl ?? ""),
+                Tag       = app,
+                Cursor    = Cursors.Hand
+            };
+            chk.CheckedChanged += (s, e) =>
+            {
+                if (chk.Checked) _selectedUrls.Add(app.DownloadUrl ?? "");
+                else             _selectedUrls.Remove(app.DownloadUrl ?? "");
+                UpdateSelectionUi();
+            };
+
             var lblIcon = new Label
             {
                 Text      = app.IconEmoji,
-                Font      = UiFont(20F),
+                Font      = CardFonts.Icon,
                 ForeColor = Color.White,
                 Size      = new Size(44, 54),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Location  = new Point(10, 9)
+                Location  = new Point(34, 9)
             };
+            // İkona tıklamak da seçimi değiştirsin
+            lblIcon.Cursor = Cursors.Hand;
+            lblIcon.Click += (s, e) => chk.Checked = !chk.Checked;
 
             var lblName = new Label
             {
                 Text      = app.Name,
                 ForeColor = Color.White,
-                Font      = UiFont(11F, FontStyle.Bold),
+                Font      = CardFonts.Name,
                 AutoSize  = true,
-                Location  = new Point(60, 8)
+                Location  = new Point(84, 8)
             };
             var lblDesc = new Label
             {
                 Text      = app.Description,
                 ForeColor = C(148, 163, 184),
-                Font      = UiFont(8.5F),
+                Font      = CardFonts.Desc,
                 AutoSize  = true,
-                Location  = new Point(61, 30)
+                Location  = new Point(85, 30)
             };
             var lblMeta = new Label
             {
@@ -973,9 +1219,9 @@ namespace AIOInstaller
                     ? $"⚡ SolidShare VIP  •  {app.SizeMB}"
                     : $"v{app.Version}  •  {app.SizeMB}",
                 ForeColor = isVip ? C(234, 179, 8) : C(100, 116, 139),
-                Font      = UiFont(8F),
+                Font      = CardFonts.Meta,
                 AutoSize  = true,
-                Location  = new Point(61, 50)
+                Location  = new Point(85, 50)
             };
 
             var btn = new Button
@@ -985,9 +1231,10 @@ namespace AIOInstaller
                 BackColor = isVip ? C(161, 122, 6) : C(59, 130, 246),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font      = UiFont(9.5F, FontStyle.Bold),
+                Font      = CardFonts.Button,
                 Cursor    = Cursors.Hand,
-                Anchor    = AnchorStyles.Top | AnchorStyles.Right
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right,
+                Enabled   = !_downloadsLocked
             };
             btn.FlatAppearance.BorderSize          = 0;
             btn.FlatAppearance.MouseOverBackColor  = isVip ? C(234, 179, 8) : C(96, 165, 250);
@@ -1006,6 +1253,7 @@ namespace AIOInstaller
             card.Controls.Add(lblDesc);
             card.Controls.Add(lblName);
             card.Controls.Add(lblIcon);
+            card.Controls.Add(chk);
             card.Controls.Add(bar);
             card.PerformLayout();
             return card;
@@ -1062,6 +1310,38 @@ namespace AIOInstaller
 
         // ─── Tek bir uygulamayı programlar klasörüne indirir (çekirdek) ────
         // Buton/panel/cts yönetimini YAPMAZ; çağıran taraf sarmalar. Başarıda true.
+        private bool _lastDownloadToIso; // son indirme programlar\ISO'ya mı gitti (mesaj için)
+
+        private static readonly string[] KnownDownloadExts =
+            { ".exe", ".msi", ".zip", ".iso", ".img", ".7z", ".rar", ".esd", ".wim" };
+
+        /// <summary>
+        /// İndirilecek dosyanın yerel yolu. Kurulum dosyaları (.exe/.msi/.zip) programlar\
+        /// klasörüne (kurulum listesine düşer), ISO/imaj/arşivler programlar\ISO\ klasörüne.
+        /// </summary>
+        private static (string path, bool isInstaller) GetDestination(OnlineApp app)
+        {
+            string url = app.DownloadUrl ?? "";
+
+            // Uzantı: önce URL yolundaki gerçek uzantı, yoksa eski tahmin (.msi/.zip/.exe)
+            string ext = "";
+            try { ext = Path.GetExtension(Uri.UnescapeDataString(new Uri(url).AbsolutePath)).ToLowerInvariant(); } catch { }
+            if (!KnownDownloadExts.Contains(ext))
+            {
+                ext = ".exe";
+                if (url.IndexOf(".msi", StringComparison.OrdinalIgnoreCase) >= 0)
+                    ext = ".msi";
+                else if (url.IndexOf(".zip", StringComparison.OrdinalIgnoreCase) >= 0)
+                    ext = ".zip";
+            }
+
+            bool isInstaller = ext == ".exe" || ext == ".msi" || ext == ".zip";
+            string targetDir = isInstaller ? DatabaseDir : Path.Combine(DatabaseDir, "ISO");
+            string safeName = string.Join("_",
+                (app.Name ?? "dosya").Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+            return (Path.Combine(targetDir, safeName + ext), isInstaller);
+        }
+
         private async Task<bool> DownloadCoreAsync(OnlineApp app, CancellationToken token)
         {
             if (!Directory.Exists(DatabaseDir))
@@ -1073,15 +1353,11 @@ namespace AIOInstaller
             if (isVip && !EnsureVipCredentials())
                 return false;
 
-            string ext = ".exe";
-            if (url.IndexOf(".msi", StringComparison.OrdinalIgnoreCase) >= 0)
-                ext = ".msi";
-            else if (url.IndexOf(".zip", StringComparison.OrdinalIgnoreCase) >= 0)
-                ext = ".zip";
-
-            string safeName = string.Join("_",
-                app.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
-            string destFile = Path.Combine(DatabaseDir, safeName + ext);
+            var (destFile, isInstaller) = GetDestination(app);
+            _lastDownloadToIso = !isInstaller;
+            string targetDir = Path.GetDirectoryName(destFile);
+            if (!Directory.Exists(targetDir))
+                Directory.CreateDirectory(targetDir);
 
             try
             {
@@ -1120,7 +1396,8 @@ namespace AIOInstaller
                 }
 
                 // Katalogdaki sessiz kurulum parametrelerini kurulum kaydına taşı
-                try { ProgramManager.SetSilentArgs(Path.GetFileName(destFile), app.SilentArgs); } catch { }
+                if (isInstaller)
+                    try { ProgramManager.SetSilentArgs(Path.GetFileName(destFile), app.SilentArgs); } catch { }
                 return true;
             }
             catch (System.Net.WebException wex) when (
@@ -1169,10 +1446,11 @@ namespace AIOInstaller
                 bool ok = await DownloadCoreAsync(app, cts.Token);
                 if (ok)
                 {
-                    lblStatus.Text    = $"✅ {app.Name} → programlar klasörüne kaydedildi";
+                    string folder = _lastDownloadToIso ? @"programlar\ISO" : "programlar";
+                    lblStatus.Text    = $"✅ {app.Name} → {folder} klasörüne kaydedildi";
                     progressBar.Value = 100;
                     MessageBox.Show(
-                        $"{app.Name} başarıyla indirildi!\n\nProgram 'programlar' klasörüne kaydedildi.",
+                        $"{app.Name} başarıyla indirildi!\n\nDosya '{folder}' klasörüne kaydedildi.",
                         "İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else if (cts.IsCancellationRequested)
@@ -1202,13 +1480,6 @@ namespace AIOInstaller
         // ─── Profil (paket) indir: içindeki tüm uygulamaları sırayla indir ─
         private async Task DownloadProfileAsync(InstallProfile profile)
         {
-            if (cts != null && !cts.IsCancellationRequested)
-            {
-                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
-                    "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
             // Profildeki adları katalogdaki uygulamalarla eşle
             var list = new List<OnlineApp>();
             foreach (var name in profile.Apps)
@@ -1226,19 +1497,134 @@ namespace AIOInstaller
                 return;
             }
 
-            string names = string.Join("\n", list.Select(a => $"• {a.Name}"));
+            await DownloadBatchAsync(list, $"{profile.Icon} '{profile.Name}' paketi");
+        }
+
+        // ─── Toplu seçim ─────────────────────────────────────────────────
+        private readonly HashSet<string> _selectedUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private Button _btnDownloadSelected;
+        private Button _btnClearSelection;
+
+        /// <summary>Seçili ve hâlâ listede olan uygulamalar (katalog sırasıyla).</summary>
+        private List<OnlineApp> SelectedApps() =>
+            allApps.Where(a => _selectedUrls.Contains(a.DownloadUrl ?? ""))
+                   .GroupBy(a => a.DownloadUrl, StringComparer.OrdinalIgnoreCase)
+                   .Select(g => g.First())
+                   .ToList();
+
+        private void UpdateSelectionUi()
+        {
+            if (_btnDownloadSelected == null) return;
+            var sel = SelectedApps();
+            string size = TotalSizeText(sel);
+            _btnDownloadSelected.Text = sel.Count == 0
+                ? "⬇ Seçilenleri İndir"
+                : $"⬇ {sel.Count} Seçileni İndir" + (size.Length > 0 ? $" ({size})" : "");
+            _btnDownloadSelected.Enabled = sel.Count > 0 && !_downloadsLocked;
+            _btnClearSelection.Enabled   = sel.Count > 0;
+        }
+
+        /// <summary>
+        /// select=true: şu anki filtre/aramadaki TÜM uygulamaları seç (yalnızca görünen sayfayı değil).
+        /// clearAll=true: tüm seçimi temizle. İkisi de false: yalnızca ekrandaki kutuları eşitle.
+        /// </summary>
+        private void SelectFiltered(bool select, bool clearAll = false)
+        {
+            if (clearAll) _selectedUrls.Clear();
+            else if (select)
+                foreach (var a in _filtered) _selectedUrls.Add(a.DownloadUrl ?? "");
+
+            // Ekrandaki kartların kutularını eşitle
+            foreach (Panel card in panelAppList.Controls.OfType<Panel>())
+                foreach (CheckBox chk in card.Controls.OfType<CheckBox>())
+                    if (chk.Tag is OnlineApp app)
+                        chk.Checked = _selectedUrls.Contains(app.DownloadUrl ?? "");
+            UpdateSelectionUi();
+        }
+
+        /// <summary>"~10 MB", "~3,2 GB" gibi boyutları toplar; hiç okunamazsa boş döner.</summary>
+        private static string TotalSizeText(List<OnlineApp> apps)
+        {
+            double mb = 0; int known = 0;
+            foreach (var a in apps)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(a.SizeMB ?? "",
+                    @"(\d+(?:[.,]\d+)?)\s*(MB|GB)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (!m.Success) continue;
+                double n = double.Parse(m.Groups[1].Value.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
+                mb += m.Groups[2].Value.ToUpperInvariant() == "GB" ? n * 1024 : n;
+                known++;
+            }
+            if (known == 0) return "";
+            string s = mb >= 1024 ? $"~{mb / 1024:0.#} GB" : $"~{Math.Round(mb):0} MB";
+            return known < apps.Count ? s + "+" : s;
+        }
+
+        private async Task DownloadSelectedAsync()
+        {
+            var list = SelectedApps();
+            if (list.Count == 0) return;
+            var done = await DownloadBatchAsync(list, $"{list.Count} seçili uygulama");
+            // Başarıyla inenlerin seçimini kaldır; başarısızlar seçili kalsın (tekrar denenebilsin)
+            foreach (var a in done) _selectedUrls.Remove(a.DownloadUrl ?? "");
+            SelectFiltered(false); // yalnızca kutuları eşitle
+        }
+
+        // ─── Toplu indirme (paketler ve seçilenler ortak) ─────────────────
+        /// <summary>
+        /// Listeyi sırayla indirir. Önce onay ister; diskte zaten olanları atlamayı önerir.
+        /// Başarıyla inen (veya atlanan) uygulamaları döndürür.
+        /// </summary>
+        private async Task<List<OnlineApp>> DownloadBatchAsync(List<OnlineApp> list, string title)
+        {
+            var done = new List<OnlineApp>();
+            if (cts != null && !cts.IsCancellationRequested)
+            {
+                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
+                    "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return done;
+            }
+
+            // VIP dosyası varsa girişi baştan iste (her dosyada sormasın, yarıda kalmasın)
+            if (list.Any(a => (a.DownloadUrl ?? "").IndexOf("vip.solidshare.net", StringComparison.OrdinalIgnoreCase) >= 0)
+                && !EnsureVipCredentials())
+                return done;
+
+            const int maxNames = 15;
+            string names = string.Join("\n", list.Take(maxNames).Select(a => $"• {a.Name}  {a.SizeMB}"));
+            if (list.Count > maxNames) names += $"\n… ve {list.Count - maxNames} uygulama daha";
+            string size = TotalSizeText(list);
+
             if (MessageBox.Show(
-                    $"'{profile.Name}' paketi — {list.Count} uygulama 'programlar' klasörüne indirilecek:\n\n{names}\n\nDevam edilsin mi?",
-                    $"{profile.Icon} {profile.Name} Paketi",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
-                return;
+                    $"{title} — {list.Count} dosya indirilecek" + (size.Length > 0 ? $" (toplam {size})" : "") +
+                    $":\n\n{names}\n\nDevam edilsin mi?",
+                    "Toplu İndirme", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return done;
+
+            // Diskte zaten olanlar
+            var existing = list.Where(a => File.Exists(GetDestination(a).path)).ToList();
+            if (existing.Count > 0)
+            {
+                var ans = MessageBox.Show(
+                    $"{existing.Count} dosya zaten indirilmiş.\n\n" +
+                    "Evet → bunları atla\nHayır → yeniden indir\nİptal → vazgeç",
+                    "Toplu İndirme", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                if (ans == DialogResult.Cancel) return done;
+                if (ans == DialogResult.Yes)
+                {
+                    done.AddRange(existing);
+                    list = list.Except(existing).ToList();
+                }
+            }
+            int skipped = done.Count;
 
             cts = new CancellationTokenSource();
             SetAllDownloadButtonsEnabled(false);
             panelStatus.Visible = true;
             progressBar.Style   = ProgressBarStyle.Continuous;
 
-            int ok = 0, fail = 0;
+            int ok = 0;
+            var failed = new List<string>();
             try
             {
                 for (int i = 0; i < list.Count; i++)
@@ -1247,20 +1633,27 @@ namespace AIOInstaller
                     progressBar.Value = 0;
                     lblStatus.Text = $"({i + 1}/{list.Count}) {list[i].Name} indiriliyor…";
                     bool r = await DownloadCoreAsync(list[i], cts.Token);
-                    if (r) ok++; else fail++;
+                    if (r) { ok++; done.Add(list[i]); }
+                    else if (!cts.IsCancellationRequested) failed.Add(list[i].Name);
                 }
 
                 if (cts.IsCancellationRequested)
                 {
-                    lblStatus.Text = $"⛔ Paket indirme durduruldu. ({ok} indirildi)";
+                    lblStatus.Text = $"⛔ Toplu indirme durduruldu. ({ok} indirildi)";
                 }
                 else
                 {
-                    lblStatus.Text = $"✅ {profile.Name} paketi: {ok} indirildi, {fail} atlandı.";
+                    lblStatus.Text = $"✅ {title}: {ok} indirildi, {skipped} atlandı, {failed.Count} başarısız.";
+                    string failText = failed.Count == 0 ? "" :
+                        "\n\nBaşarısız olanlar:\n• " + string.Join("\n• ", failed.Take(maxNames)) +
+                        (failed.Count > maxNames ? $"\n… ve {failed.Count - maxNames} tane daha" : "");
                     MessageBox.Show(
-                        $"'{profile.Name}' paketi tamamlandı.\n\nİndirilen: {ok}\nBaşarısız/atlanan: {fail}\n\n" +
-                        "Programlar 'programlar' klasörüne eklendi; kurmak için ana penceredeki 'Tam Kurulum' veya 'Seçilenleri Kur' kullanabilirsiniz.",
-                        "Paket İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        $"{title} tamamlandı.\n\nİndirilen: {ok}\nZaten vardı (atlandı): {skipped}\nBaşarısız: {failed.Count}" +
+                        failText + "\n\n" +
+                        "Kurulum dosyaları 'programlar', ISO'lar 'programlar\\ISO' klasöründe. Kurmak için ana penceredeki " +
+                        "'Tam Kurulum' veya 'Seçilenleri Kur' kullanabilirsiniz.",
+                        "Toplu İndirme Tamamlandı", MessageBoxButtons.OK,
+                        failed.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
                 }
             }
             finally
@@ -1269,18 +1662,26 @@ namespace AIOInstaller
                 cts = null;
                 progressBar.Style = ProgressBarStyle.Continuous;
                 SetAllDownloadButtonsEnabled(true);
-                await Task.Delay(3000);
-                if (cts == null)
-                    panelStatus.Visible = false;
+                HidePanelLater();
             }
+            return done;
+        }
+
+        private async void HidePanelLater()
+        {
+            await Task.Delay(3000);
+            if (cts == null)
+                panelStatus.Visible = false;
         }
 
         // ─── Helpers ─────────────────────────────────────────────────────
         private void SetAllDownloadButtonsEnabled(bool enabled)
         {
+            _downloadsLocked = !enabled; // sonradan kurulan kartlar da aynı durumda başlasın
             foreach (Panel card in panelAppList.Controls.OfType<Panel>())
                 foreach (Button btn in card.Controls.OfType<Button>())
                     btn.Enabled = enabled;
+            UpdateSelectionUi();
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

@@ -16,6 +16,11 @@ namespace AIOInstaller
         public string Version     { get; set; }
         public string SizeMB      { get; set; }
         public string IconEmoji   { get; set; }
+        /// <summary>
+        /// Girdinin kaynağı. Katalog/elle eklenenlerde boş; SolidShare dizin
+        /// listesinden üretilenlerde <see cref="SolidShareService.ListingSource"/>.
+        /// </summary>
+        public string Source      { get; set; }
 
         public OnlineApp() { }
 
