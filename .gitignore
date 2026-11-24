@@ -24,3 +24,8 @@ artifacts/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# MEB EBYS kurulum dosyası (büyük, repo dışında tutulur)
+EBYS*.exe
+# Çalışma zamanında oluşan ayar dosyası (Wi-Fi şifreleri içerir)
+ayarlar.json

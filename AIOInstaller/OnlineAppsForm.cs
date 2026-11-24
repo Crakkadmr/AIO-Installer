@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
+using AIOInstaller.Ui;
 
 namespace AIOInstaller
 {
@@ -42,9 +43,8 @@ namespace AIOInstaller
         // ─── Font/Color helpers ──────────────────────────────────────────
         private static Font UiFont(float size, FontStyle style = FontStyle.Regular)
         {
-            foreach (var name in new[] { "Bahnschrift", "Segoe UI Variable", "Segoe UI", "Calibri" })
-                try { return new Font(name, size, style, GraphicsUnit.Point); } catch { }
-            return new Font(SystemFonts.MessageBoxFont.FontFamily, size, style, GraphicsUnit.Point);
+            // Kopya döndür: bu form bazı fontları using ile dispose ediyor, paylaşılan tema fontu bozulmasın
+            return (Font)Theme.Body(size, style).Clone();
         }
         private static Color C(int r, int g, int b) => Color.FromArgb(r, g, b);
 
@@ -544,7 +544,7 @@ namespace AIOInstaller
                 if (listed.Count == 0)
                 {
                     lblHeader.Text = "🌐 Online Program İndir";
-                    MessageBox.Show(this,
+                    Dialogs.Show(this,
                         "SolidShare dizinlerinde indirilebilir dosya bulunamadı.\n" +
                         "Sayfa yapısı değişmiş olabilir." + errors,
                         "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -563,7 +563,7 @@ namespace AIOInstaller
                 lblHeader.Text = $"⚡ SolidShare: {apps} uygulama, {isos} ISO ({sw.Elapsed.TotalSeconds:0.#} sn)";
 
                 if (errors.Length > 0)
-                    MessageBox.Show(this, "Liste alındı ama bazı dizinler okunamadı." + errors,
+                    Dialogs.Show(this, "Liste alındı ama bazı dizinler okunamadı." + errors,
                         "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (SolidShareService.UnauthorizedException ex)
@@ -571,12 +571,12 @@ namespace AIOInstaller
                 _vipUser = null;
                 _vipPass = null;
                 lblHeader.Text = "🌐 Online Program İndir";
-                MessageBox.Show(this, ex.Message, "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Dialogs.Show(this, ex.Message, "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
                 lblHeader.Text = "🌐 Online Program İndir";
-                MessageBox.Show(this, "SolidShare listesi alınamadı:\n" + ex.Message,
+                Dialogs.Show(this, "SolidShare listesi alınamadı:\n" + ex.Message,
                     "SolidShare", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -596,7 +596,7 @@ namespace AIOInstaller
                 dlg.FormBorderStyle  = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox      = false;
                 dlg.MinimizeBox      = false;
-                dlg.BackColor        = C(15, 23, 42);
+                dlg.BackColor        = Theme.Bg;
 
                 int y = 15;
                 Label MakeLbl(string text) {
@@ -606,7 +606,7 @@ namespace AIOInstaller
                 }
                 TextBox MakeTxt(string placeholder, bool isPass = false) {
                     var t = new TextBox { Location = new Point(130, y), Width = 330,
-                        BackColor = C(30, 41, 59), ForeColor = Color.White,
+                        BackColor = Theme.Surface, ForeColor = Color.White,
                         BorderStyle = BorderStyle.FixedSingle, Font = UiFont(9.5F),
                         UseSystemPasswordChar = isPass };
                     SendMessage(t.Handle, 0x1501, IntPtr.Zero, placeholder);
@@ -626,7 +626,7 @@ namespace AIOInstaller
                     FlatStyle = FlatStyle.Flat, Font = UiFont(9.5F, FontStyle.Bold) };
                 var btnCan = new Button { Text = "İptal", DialogResult = DialogResult.Cancel,
                     Location = new Point(360, y + 5), Size = new Size(90, 30),
-                    BackColor = C(71, 85, 105), ForeColor = Color.White,
+                    BackColor = Theme.SurfaceRaised, ForeColor = Color.White,
                     FlatStyle = FlatStyle.Flat, Font = UiFont(9.5F) };
                 btnOk.FlatAppearance.BorderSize  = 0;
                 btnCan.FlatAppearance.BorderSize = 0;
@@ -640,7 +640,7 @@ namespace AIOInstaller
                 if (dlg.ShowDialog() != DialogResult.OK) return;
                 if (string.IsNullOrWhiteSpace(txtName.Text) || string.IsNullOrWhiteSpace(txtUrl.Text))
                 {
-                    MessageBox.Show("Uygulama adı ve URL zorunludur.", "Eksik Bilgi",
+                    Dialogs.Show("Uygulama adı ve URL zorunludur.", "Eksik Bilgi",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
@@ -676,7 +676,7 @@ namespace AIOInstaller
                     listCategories.Items.Insert(ins, newApp.Category);
                 }
                 RefreshAppList();
-                MessageBox.Show($"'{newApp.Name}' başarıyla eklendi!\n\nKatalog.extra.json dosyasına kaydedildi.",
+                Dialogs.Show($"'{newApp.Name}' başarıyla eklendi!\n\nKatalog.extra.json dosyasına kaydedildi.",
                     "Eklendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
@@ -689,16 +689,22 @@ namespace AIOInstaller
             this.Size          = new Size(1000, 680);
             this.MinimumSize   = new Size(860, 520);
             this.StartPosition = FormStartPosition.CenterParent;
-            this.BackColor     = C(15, 23, 42);
+            this.BackColor     = Theme.Bg;
             this.Font          = UiFont(9F);
             this.AutoScaleMode = AutoScaleMode.Dpi;
+            Theme.ApplyDarkTitleBar(this);
+            this.Load += (s, e) =>
+            {
+                if (panelAppList != null) Theme.DarkScrollbars(panelAppList);
+                if (listCategories != null) Theme.DarkScrollbars(listCategories);
+            };
 
             // ── Header ──────────────────────────────────────────────────
             var header = new Panel
             {
                 Dock      = DockStyle.Top,
                 Height    = 64,
-                BackColor = C(15, 23, 42),
+                BackColor = Theme.Bg,
                 Padding   = new Padding(20, 0, 20, 0)
             };
             lblHeader = new Label
@@ -712,7 +718,7 @@ namespace AIOInstaller
             var lblSub = new Label
             {
                 Text      = "Programları indirin, programlar klasörüne otomatik kaydedilir",
-                ForeColor = C(148, 163, 184),
+                ForeColor = Theme.TextMuted,
                 Font      = UiFont(9F, FontStyle.Italic),
                 AutoSize  = true,
                 Location  = new Point(23, 38)
@@ -722,14 +728,14 @@ namespace AIOInstaller
             {
                 Text      = "🔄 Yenile",
                 Size      = new Size(90, 28),
-                BackColor = C(30, 41, 59),
-                ForeColor = C(148, 163, 184),
+                BackColor = Theme.Surface,
+                ForeColor = Theme.TextMuted,
                 FlatStyle = FlatStyle.Flat,
                 Font      = UiFont(8.5F, FontStyle.Bold),
                 Cursor    = Cursors.Hand,
                 Anchor    = AnchorStyles.Top | AnchorStyles.Right
             };
-            btnRefresh.FlatAppearance.BorderColor = C(51, 65, 85);
+            btnRefresh.FlatAppearance.BorderColor = Theme.Border;
             btnRefresh.FlatAppearance.BorderSize  = 1;
             btnRefresh.Click += (s, e) => RefreshCatalogAsync();
 
@@ -785,7 +791,7 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Bottom,
                 Height    = 54,
-                BackColor = C(30, 41, 59),
+                BackColor = Theme.Surface,
                 Padding   = new Padding(12, 6, 12, 6),
                 Visible   = false
             };
@@ -807,7 +813,7 @@ namespace AIOInstaller
             btnCancelDownload = new Button
             {
                 Text      = "✕ Durdur",
-                BackColor = C(239, 68, 68),
+                BackColor = Theme.Danger,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font      = UiFont(8.5F, FontStyle.Bold),
@@ -845,13 +851,13 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Left,
                 Width     = 180,
-                BackColor = C(30, 41, 59),
+                BackColor = Theme.Surface,
                 Padding   = new Padding(8)
             };
             var lblCatTitle = new Label
             {
                 Text      = "KATEGORİLER",
-                ForeColor = C(148, 163, 184),
+                ForeColor = Theme.TextMuted,
                 Font      = UiFont(8F, FontStyle.Bold),
                 Dock      = DockStyle.Top,
                 Height    = 24,
@@ -860,7 +866,7 @@ namespace AIOInstaller
             listCategories = new ListBox
             {
                 Dock          = DockStyle.Fill,
-                BackColor     = C(30, 41, 59),
+                BackColor     = Theme.Surface,
                 ForeColor     = Color.White,
                 BorderStyle   = BorderStyle.None,
                 Font          = UiFont(10F, FontStyle.Bold),
@@ -883,7 +889,7 @@ namespace AIOInstaller
             var panelRight = new Panel
             {
                 Dock       = DockStyle.Fill,
-                BackColor  = C(15, 23, 42)
+                BackColor  = Theme.Bg
             };
 
             var panelSearch = new Panel
@@ -897,7 +903,7 @@ namespace AIOInstaller
             {
                 Dock        = DockStyle.Fill,
                 Font        = UiFont(12F),
-                BackColor   = C(30, 41, 59),
+                BackColor   = Theme.Surface,
                 ForeColor   = Color.White,
                 BorderStyle = BorderStyle.FixedSingle
             };
@@ -928,9 +934,9 @@ namespace AIOInstaller
             }
             Control Gap() => new Panel { Dock = DockStyle.Right, Width = 6 };
 
-            var btnSelectVisible = MakeBarBtn("☑ Listedekileri Seç", 150, C(51, 65, 85));
+            var btnSelectVisible = MakeBarBtn("☑ Listedekileri Seç", 150, Theme.Border);
             btnSelectVisible.Click += (s, e) => SelectFiltered(true);
-            _btnClearSelection = MakeBarBtn("✖ Temizle", 90, C(51, 65, 85));
+            _btnClearSelection = MakeBarBtn("✖ Temizle", 90, Theme.Border);
             _btnClearSelection.Click += (s, e) => SelectFiltered(false, clearAll: true);
             _btnDownloadSelected = MakeBarBtn("", 190, C(34, 197, 94));
             _btnDownloadSelected.FlatAppearance.MouseOverBackColor = C(74, 222, 128);
@@ -959,13 +965,13 @@ namespace AIOInstaller
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents  = false,
                 AutoScroll    = true,
-                BackColor     = C(30, 41, 59),
+                BackColor     = Theme.Surface,
                 Padding       = new Padding(10, 8, 10, 8)
             };
             var lblProfiles = new Label
             {
                 Text      = "📦 PAKETLER:",
-                ForeColor = C(148, 163, 184),
+                ForeColor = Theme.TextMuted,
                 Font      = UiFont(8.5F, FontStyle.Bold),
                 AutoSize  = false,
                 Width     = 90,
@@ -1006,7 +1012,7 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Left,
                 Width     = 4,
-                BackColor = C(51, 65, 85)
+                BackColor = Theme.Border
             };
 
             this.Controls.Add(panelRight);
@@ -1025,7 +1031,7 @@ namespace AIOInstaller
             string text   = listCategories.Items[e.Index].ToString();
             bool selected = (e.State & DrawItemState.Selected) != 0;
             e.Graphics.FillRectangle(
-                new SolidBrush(selected ? C(59, 130, 246) : C(30, 41, 59)), e.Bounds);
+                new SolidBrush(selected ? Theme.Accent : Theme.Surface), e.Bounds);
             var sf = new System.Drawing.StringFormat
                 { LineAlignment = System.Drawing.StringAlignment.Center };
             using (var font = UiFont(10F, selected ? FontStyle.Bold : FontStyle.Regular))
@@ -1122,13 +1128,13 @@ namespace AIOInstaller
                 {
                     Dock      = DockStyle.Top,
                     Height    = 44,
-                    BackColor = C(30, 41, 59),
-                    ForeColor = C(148, 163, 184),
+                    BackColor = Theme.Surface,
+                    ForeColor = Theme.TextMuted,
                     FlatStyle = FlatStyle.Flat,
                     Font      = CardFonts.Button,
                     Cursor    = Cursors.Hand
                 };
-                _btnMore.FlatAppearance.BorderColor = C(51, 65, 85);
+                _btnMore.FlatAppearance.BorderColor = Theme.Border;
                 _btnMore.Click += (s, e) => ShowMoreApps();
                 panelAppList.Controls.Add(_btnMore);
             }
@@ -1156,7 +1162,7 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Top,
                 Height    = 72,
-                BackColor = C(30, 41, 59),
+                BackColor = Theme.Surface,
                 Padding   = new Padding(12, 8, 12, 8),
                 Cursor    = Cursors.Default
             };
@@ -1165,7 +1171,7 @@ namespace AIOInstaller
             {
                 Dock      = DockStyle.Left,
                 Width     = 4,
-                BackColor = isVip ? C(234, 179, 8) : C(59, 130, 246)
+                BackColor = isVip ? C(234, 179, 8) : Theme.Accent
             };
 
             // Toplu indirme seçimi (DownloadUrl ile tutulur → liste yenilense de korunur)
@@ -1208,7 +1214,7 @@ namespace AIOInstaller
             var lblDesc = new Label
             {
                 Text      = app.Description,
-                ForeColor = C(148, 163, 184),
+                ForeColor = Theme.TextMuted,
                 Font      = CardFonts.Desc,
                 AutoSize  = true,
                 Location  = new Point(85, 30)
@@ -1218,7 +1224,7 @@ namespace AIOInstaller
                 Text      = isVip
                     ? $"⚡ SolidShare VIP  •  {app.SizeMB}"
                     : $"v{app.Version}  •  {app.SizeMB}",
-                ForeColor = isVip ? C(234, 179, 8) : C(100, 116, 139),
+                ForeColor = isVip ? C(234, 179, 8) : Theme.TextDim,
                 Font      = CardFonts.Meta,
                 AutoSize  = true,
                 Location  = new Point(85, 50)
@@ -1228,7 +1234,7 @@ namespace AIOInstaller
             {
                 Text      = isVip ? "🔐 VIP İndir" : "⬇ İndir",
                 Size      = new Size(110, 38),
-                BackColor = isVip ? C(161, 122, 6) : C(59, 130, 246),
+                BackColor = isVip ? C(161, 122, 6) : Theme.Accent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font      = CardFonts.Button,
@@ -1237,8 +1243,8 @@ namespace AIOInstaller
                 Enabled   = !_downloadsLocked
             };
             btn.FlatAppearance.BorderSize          = 0;
-            btn.FlatAppearance.MouseOverBackColor  = isVip ? C(234, 179, 8) : C(96, 165, 250);
-            btn.FlatAppearance.MouseDownBackColor  = isVip ? C(120, 90, 4) : C(37, 99, 235);
+            btn.FlatAppearance.MouseOverBackColor  = isVip ? C(234, 179, 8) : Theme.AccentHover;
+            btn.FlatAppearance.MouseDownBackColor  = isVip ? C(120, 90, 4) : Theme.Accent;
 
             void PositionBtn() => btn.Location = new Point(
                 card.ClientSize.Width - btn.Width - 14,
@@ -1272,26 +1278,26 @@ namespace AIOInstaller
                 dlg.FormBorderStyle  = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox      = false;
                 dlg.MinimizeBox      = false;
-                dlg.BackColor        = C(15, 23, 42);
+                dlg.BackColor        = Theme.Bg;
 
                 var lblU = new Label { Text = "Kullanıcı Adı:", ForeColor = Color.White,
                     Font = UiFont(9F), Location = new Point(12, 18), AutoSize = true };
                 var txtU = new TextBox { Location = new Point(130, 15), Width = 170,
-                    BackColor = C(30, 41, 59), ForeColor = Color.White,
+                    BackColor = Theme.Surface, ForeColor = Color.White,
                     BorderStyle = BorderStyle.FixedSingle, Font = UiFont(9F) };
                 var lblP = new Label { Text = "Şifre:", ForeColor = Color.White,
                     Font = UiFont(9F), Location = new Point(12, 50), AutoSize = true };
                 var txtP = new TextBox { Location = new Point(130, 47), Width = 170,
-                    BackColor = C(30, 41, 59), ForeColor = Color.White,
+                    BackColor = Theme.Surface, ForeColor = Color.White,
                     BorderStyle = BorderStyle.FixedSingle, UseSystemPasswordChar = true,
                     Font = UiFont(9F) };
                 var btnOk = new Button { Text = "Giriş", DialogResult = DialogResult.OK,
                     Location = new Point(130, 88), Size = new Size(80, 28),
-                    BackColor = C(59, 130, 246), ForeColor = Color.White,
+                    BackColor = Theme.Accent, ForeColor = Color.White,
                     FlatStyle = FlatStyle.Flat, Font = UiFont(9F) };
                 var btnCan = new Button { Text = "İptal", DialogResult = DialogResult.Cancel,
                     Location = new Point(220, 88), Size = new Size(80, 28),
-                    BackColor = C(71, 85, 105), ForeColor = Color.White,
+                    BackColor = Theme.SurfaceRaised, ForeColor = Color.White,
                     FlatStyle = FlatStyle.Flat, Font = UiFont(9F) };
                 btnOk.FlatAppearance.BorderSize  = 0;
                 btnCan.FlatAppearance.BorderSize = 0;
@@ -1429,7 +1435,7 @@ namespace AIOInstaller
         {
             if (cts != null && !cts.IsCancellationRequested)
             {
-                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
+                Dialogs.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
                     "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -1449,7 +1455,7 @@ namespace AIOInstaller
                     string folder = _lastDownloadToIso ? @"programlar\ISO" : "programlar";
                     lblStatus.Text    = $"✅ {app.Name} → {folder} klasörüne kaydedildi";
                     progressBar.Value = 100;
-                    MessageBox.Show(
+                    Dialogs.Show(
                         $"{app.Name} başarıyla indirildi!\n\nDosya '{folder}' klasörüne kaydedildi.",
                         "İndirme Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1459,7 +1465,7 @@ namespace AIOInstaller
                 }
                 else
                 {
-                    MessageBox.Show(
+                    Dialogs.Show(
                         $"{app.Name} indirilemedi. Link çalışmıyor olabilir.\n\n" +
                         "Not: Katalog linkleri GitHub'daki catalog.json dosyasından güncellenir.",
                         "İndirme Başarısız", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1492,7 +1498,7 @@ namespace AIOInstaller
 
             if (list.Count == 0)
             {
-                MessageBox.Show("Bu pakette indirilebilecek uygulama bulunamadı.",
+                Dialogs.Show("Bu pakette indirilebilecek uygulama bulunamadı.",
                     "Paket", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -1580,7 +1586,7 @@ namespace AIOInstaller
             var done = new List<OnlineApp>();
             if (cts != null && !cts.IsCancellationRequested)
             {
-                MessageBox.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
+                Dialogs.Show("Başka bir indirme devam ediyor. Lütfen bekleyin veya durdurun.",
                     "Meşgul", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return done;
             }
@@ -1595,7 +1601,7 @@ namespace AIOInstaller
             if (list.Count > maxNames) names += $"\n… ve {list.Count - maxNames} uygulama daha";
             string size = TotalSizeText(list);
 
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                     $"{title} — {list.Count} dosya indirilecek" + (size.Length > 0 ? $" (toplam {size})" : "") +
                     $":\n\n{names}\n\nDevam edilsin mi?",
                     "Toplu İndirme", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
@@ -1605,7 +1611,7 @@ namespace AIOInstaller
             var existing = list.Where(a => File.Exists(GetDestination(a).path)).ToList();
             if (existing.Count > 0)
             {
-                var ans = MessageBox.Show(
+                var ans = Dialogs.Show(
                     $"{existing.Count} dosya zaten indirilmiş.\n\n" +
                     "Evet → bunları atla\nHayır → yeniden indir\nİptal → vazgeç",
                     "Toplu İndirme", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
@@ -1647,7 +1653,7 @@ namespace AIOInstaller
                     string failText = failed.Count == 0 ? "" :
                         "\n\nBaşarısız olanlar:\n• " + string.Join("\n• ", failed.Take(maxNames)) +
                         (failed.Count > maxNames ? $"\n… ve {failed.Count - maxNames} tane daha" : "");
-                    MessageBox.Show(
+                    Dialogs.Show(
                         $"{title} tamamlandı.\n\nİndirilen: {ok}\nZaten vardı (atlandı): {skipped}\nBaşarısız: {failed.Count}" +
                         failText + "\n\n" +
                         "Kurulum dosyaları 'programlar', ISO'lar 'programlar\\ISO' klasöründe. Kurmak için ana penceredeki " +

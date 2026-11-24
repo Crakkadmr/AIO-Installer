@@ -2,505 +2,627 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using AIOInstaller.Ui;
 
 namespace AIOInstaller
 {
     public partial class MainForm : Form
     {
-        private static Font UiFont(float size, FontStyle style = FontStyle.Regular)
-        {
-            string[] preferred =
-            {
-                "Bahnschrift",
-                "Segoe UI Variable",
-                "Segoe UI",
-                "Calibri"
-            };
-
-            foreach (var name in preferred)
-            {
-                try { return new Font(name, size, style, GraphicsUnit.Point); }
-                catch { /* font yoksa denemeye devam */ }
-            }
-
-            return new Font(SystemFonts.MessageBoxFont.FontFamily, size, style, GraphicsUnit.Point);
-        }
-
         private static Color C(int r, int g, int b) => Color.FromArgb(r, g, b);
 
         private List<ProgramInfo> programs;
         private DataGridView gridPrograms;
-        private Button btnSelectAll;
-        private Button btnInstallSelected;
-        private Button btnDeselectAll;
+        private ModernButton btnSelectAll;
+        private ModernButton btnInstallSelected;
+        private ModernButton btnDeselectAll;
 
-        private Panel installStatusPanel;
-        private ProgressBar progressBarInstall;
+        private Card installStatusPanel;
+        private ModernProgress progressBarInstall;
         private Label lblInstallStatus;
         private bool isInstalling;
         private CancellationTokenSource installCts;
-        private Button btnStopInstall;
+        private ModernButton btnStopInstall;
 
-        private Button btnFullSetup;
-        private Button btnAdd;
-        private Button btnRemove;
-        private Button btnOpenDatabase;
-        private Button btnSync;
-        private Button btnDownload;
-        private Button btnActivate;
-        private Button btnPowerShell;
-        private Button btnDefenderOff;
-        private Button btnDefenderOn;
-        private Button btnUpdateBlock;
-        private Button btnUpdateAllow;
-        private Button btnBloatware;
-        private Label lblCredit;
+        private ModernButton btnFullSetup;
+        private ModernButton btnAdd;
+        private ModernButton btnRemove;
+        private ModernButton btnOpenDatabase;
+        private ModernButton btnSync;
+        private ModernButton btnActivate;
+        private ModernButton btnPowerShell;
+        private ModernButton btnDefenderOff;
+        private ModernButton btnDefenderOn;
+        private ModernButton btnUpdateBlock;
+        private ModernButton btnUpdateAllow;
+        private ModernButton btnBloatware;
         private Label lblTotalCount;
+        private Label lblSelection;
+        private DarkTextBox txtSearch;
+        private Panel emptyState;
+
+        // Kabuk (sol menü + sayfalar)
+        private Panel sidebar;
+        private Panel brandPanel;
+        private Label lblCredit;
+        private NavItem navPrograms;
+        private NavItem navOnline;
+        private NavItem navTools;
+        private NavItem navSettings;
+        private Panel pagePrograms;
+        private Panel pageTools;
+        private SettingsPage pageSettings;
+        private bool sidebarCompact;
+        private readonly ToolTip navTips = new ToolTip();
 
         private const string ColSelect = "colSelect";
         private const string ColName = "colName";
-        private const string ColDescription = "colDescription";
-        private const string ColVersion = "colVersion";
         private const string ColSize = "colSize";
         private const string ColAdded = "colAdded";
         private const string ColStatus = "colStatus";
-        private Label lblTitle;
+
+        private const string StatusWaiting = "Bekliyor";
 
         public MainForm()
         {
             InitializeComponent();
             LoadPrograms();
+            ShowPage(pagePrograms);
+            Shown += (s, e) => { gridPrograms.ClearSelection(); gridPrograms.CurrentCell = null; };
         }
+
+        // ══════════════════════════════════════════════════════════════════
+        // ARAYÜZ
+        // ══════════════════════════════════════════════════════════════════
 
         private void InitializeComponent()
         {
-            this.SuspendLayout();
+            SuspendLayout();
 
-            // Form ayarları - Modern görünüm
-            this.Text = "AIO INSTALLER V1.0";
-            this.Size = new Size(932, 821);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.MinimumSize = new Size(750, 600);
-            this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.BackColor = C(15, 23, 42);
-            this.Font = UiFont(9F, FontStyle.Regular);
-            // Programatik icon oluştur
-            try { this.Icon = CreateAppIcon(); } catch { }
+            Text = "AIO Yazılım Yükleyici";
+            AutoScaleMode = AutoScaleMode.None;
+            Size = new Size(1200, 780);
+            MinimumSize = new Size(880, 600);
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Text;
+            Font = Theme.Body(9.75f);
+            DoubleBuffered = true;
+            Theme.ApplyDarkTitleBar(this);
+            try { Icon = CreateAppIcon(); } catch { }
 
-            // Başlık paneli
-            Panel headerPanel = new Panel
+            BuildSidebar();
+
+            var content = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Bg,
+                Padding = new Padding(32, 26, 32, 22)
+            };
+
+            BuildStatusDock();
+
+            var pagesHost = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
+            pagePrograms = BuildProgramsPage();
+            pageTools = BuildToolsPage();
+            pageSettings = new SettingsPage { Dock = DockStyle.Fill, Visible = false };
+            pagesHost.Controls.Add(pagePrograms);
+            pagesHost.Controls.Add(pageTools);
+            pagesHost.Controls.Add(pageSettings);
+
+            content.Controls.Add(pagesHost);          // Fill
+            content.Controls.Add(installStatusPanel); // Bottom
+
+            Controls.Add(content);   // Fill
+            Controls.Add(sidebar);   // Left
+
+            Resize += (s, e) => ApplySidebarMode(ClientSize.Width < 1040);
+            ApplySidebarMode(ClientSize.Width < 1040);
+
+            KeyPreview = true;
+            KeyDown += MainForm_KeyDown;
+
+            ResumeLayout(false);
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Ctrl+F: aramaya odaklan
+            if (e.Control && e.KeyCode == Keys.F && pagePrograms.Visible)
+            {
+                txtSearch.Inner.Focus();
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        // ── Sol menü ─────────────────────────────────────────────────────
+        private void BuildSidebar()
+        {
+            sidebar = new Panel
+            {
+                Dock = DockStyle.Left,
+                Width = 248,
+                BackColor = Theme.Sidebar,
+                Padding = new Padding(0, 0, 1, 16) // sağdaki 1px kenar çizgisi görünsün
+            };
+            sidebar.Paint += (s, e) =>
+            {
+                using (var p = new Pen(Theme.Border))
+                    e.Graphics.DrawLine(p, sidebar.Width - 1, 0, sidebar.Width - 1, sidebar.Height);
+            };
+
+            brandPanel = new Panel { Dock = DockStyle.Top, Height = 92, BackColor = Theme.Sidebar };
+            brandPanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                Theme.HighQuality(g);
+                int x = sidebarCompact ? (brandPanel.Width - 40) / 2 : 22;
+                var logo = new RectangleF(x, 26, 40, 40);
+                using (var path = Theme.RoundRect(logo, 11))
+                using (var lg = new System.Drawing.Drawing2D.LinearGradientBrush(logo, Theme.Accent, Theme.HeroFrom, 45f))
+                    g.FillPath(lg, path);
+                Theme.DrawText(g, "A", Theme.Heading(15f), Rectangle.Round(logo), Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+
+                if (!sidebarCompact)
+                {
+                    Theme.DrawText(g, "AIO", Theme.Heading(15f), new Rectangle(74, 24, 150, 24), Theme.Text);
+                    Theme.DrawText(g, "Yazılım Yükleyici", Theme.Body(8.75f), new Rectangle(74, 47, 160, 20), Theme.TextMuted);
+                }
+            };
+
+            var navSection = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 75,
-                BackColor = C(15, 23, 42),
-                Padding = new Padding(20, 0, 20, 0)
+                Height = 30,
+                Text = "MENÜ",
+                Font = Theme.Body(7.75f, FontStyle.Bold),
+                ForeColor = Theme.TextDim,
+                Padding = new Padding(24, 0, 0, 4),
+                TextAlign = ContentAlignment.BottomLeft
             };
 
-            // Başlık
-            lblTitle = new Label
+            navPrograms = MakeNav("Programlar", Theme.Glyph.Programs);
+            navOnline = MakeNav("Online İndir", Theme.Glyph.Download);
+            navOnline.ShowExternal = true;
+            navTools = MakeNav("Sistem Araçları", Theme.Glyph.Tools);
+            navSettings = MakeNav("Ayarlar", Theme.Glyph.Settings);
+
+            navPrograms.Click += (s, e) => ShowPage(pagePrograms);
+            navTools.Click += (s, e) => ShowPage(pageTools);
+            navSettings.Click += (s, e) => ShowPage(pageSettings);
+            navOnline.Click += BtnDownload_Click;
+
+            // Alt kısım: Tam Kurulum (her sayfadan erişilir)
+            var bottom = new Panel { Dock = DockStyle.Bottom, Height = 118, BackColor = Theme.Sidebar, Padding = new Padding(14, 0, 14, 0) };
+            btnFullSetup = new ModernButton
             {
-                Text = "AIO Yazılım Yükleyici",
-                ForeColor = Color.White,
-                Font = UiFont(18F, FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(20, 10)
+                Kind = ButtonKind.Hero,
+                Text = "Tam Kurulum",
+                Subtitle = "Bilgisayarı tek tıkla hazırla",
+                Glyph = Theme.Glyph.Rocket,
+                Font = Theme.Heading(12f),
+                CornerRadius = 12,
+                Dock = DockStyle.Top,
+                Height = 66
             };
+            btnFullSetup.Click += BtnFullSetup_Click;
 
             lblCredit = new Label
             {
+                Dock = DockStyle.Bottom,
+                Height = 30,
                 Text = "made by demircan",
-                ForeColor = C(59, 130, 246),
-                Font = UiFont(9F, FontStyle.Italic | FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(23, 44)
+                Font = Theme.Body(8f, FontStyle.Italic),
+                ForeColor = Theme.TextDim,
+                TextAlign = ContentAlignment.BottomCenter
+            };
+            bottom.Controls.Add(btnFullSetup);
+            bottom.Controls.Add(lblCredit);
+
+            // Dock sırası: son eklenen en üstte
+            sidebar.Controls.Add(bottom);
+            sidebar.Controls.Add(navSettings);
+            sidebar.Controls.Add(navTools);
+            sidebar.Controls.Add(navOnline);
+            sidebar.Controls.Add(navPrograms);
+            sidebar.Controls.Add(navSection);
+            sidebar.Controls.Add(brandPanel);
+        }
+
+        private NavItem MakeNav(string text, string glyph)
+        {
+            return new NavItem { Text = text, Glyph = glyph, Dock = DockStyle.Top, Height = 46 };
+        }
+
+        private void ApplySidebarMode(bool compact)
+        {
+            if (sidebar == null || (compact == sidebarCompact && sidebar.Width > 0 && sidebar.Tag != null)) return;
+            sidebar.Tag = true;
+            sidebarCompact = compact;
+            sidebar.Width = compact ? 84 : 248;
+            foreach (var nav in new[] { navPrograms, navOnline, navTools, navSettings })
+            {
+                nav.Compact = compact;
+                navTips.SetToolTip(nav, compact ? nav.Text : null);
+            }
+            navTips.SetToolTip(btnFullSetup, compact ? "Tam Kurulum" : null);
+
+            btnFullSetup.Text = compact ? "" : "Tam Kurulum";
+            btnFullSetup.Subtitle = compact ? null : "Bilgisayarı tek tıkla hazırla";
+            lblCredit.Visible = !compact;
+            sidebar.Controls[0].Padding = compact ? new Padding(12, 0, 12, 0) : new Padding(14, 0, 14, 0);
+            brandPanel.Invalidate();
+            sidebar.Invalidate();
+        }
+
+        private void ShowPage(Control page)
+        {
+            foreach (var p in new Control[] { pagePrograms, pageTools, pageSettings })
+                p.Visible = p == page;
+
+            navPrograms.Selected = page == pagePrograms;
+            navTools.Selected = page == pageTools;
+            navSettings.Selected = page == pageSettings;
+
+            if (page == pageSettings) pageSettings.RefreshEbys();
+        }
+
+        /// <summary>Sayfa başlığı: büyük başlık + açıklama, sağda isteğe bağlı kontrol.</summary>
+        private static Panel BuildPageHeader(string title, string subtitle, Control right)
+        {
+            var header = new Panel { Dock = DockStyle.Top, Height = 78, BackColor = Theme.Bg };
+            var lblTitle = UiFactory.Label(title, Theme.Heading(22f), Theme.Text);
+            lblTitle.Location = new Point(0, 0);
+            var lblSub = UiFactory.Label(subtitle, Theme.Body(10f), Theme.TextMuted);
+            lblSub.Location = new Point(2, 40);
+            header.Controls.Add(lblTitle);
+            header.Controls.Add(lblSub);
+
+            if (right != null)
+            {
+                right.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                header.Controls.Add(right);
+                header.Layout += (s, e) => right.Location = new Point(header.Width - right.Width, 6);
+            }
+            return header;
+        }
+
+        // ── Kurulum durum çubuğu (her sayfanın altında) ─────────────────────
+        private void BuildStatusDock()
+        {
+            installStatusPanel = new Card
+            {
+                Dock = DockStyle.Bottom,
+                Height = 92,
+                Padding = new Padding(22, 16, 18, 16),
+                Visible = false,
+                FillColor = Theme.Surface,
+                BorderColor = Theme.BorderStrong
             };
 
-            // Sağ kısım: Toplam Sayı
+            var spacer = new Panel { Dock = DockStyle.Top, Height = 14, BackColor = Theme.Bg };
+
+            lblInstallStatus = new Label
+            {
+                Font = Theme.Body(10.5f, FontStyle.Bold),
+                ForeColor = Theme.Text,
+                BackColor = Theme.Surface,
+                AutoEllipsis = true,
+                UseMnemonic = false,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            progressBarInstall = new ModernProgress { Height = 8, BackColor = Theme.Surface };
+
+            btnStopInstall = new ModernButton
+            {
+                Text = "Durdur",
+                Glyph = Theme.Glyph.Stop,
+                Kind = ButtonKind.Danger,
+                Size = new Size(118, 40),
+                Enabled = false
+            };
+            btnStopInstall.Click += BtnStopInstall_Click;
+
+            installStatusPanel.Controls.Add(lblInstallStatus);
+            installStatusPanel.Controls.Add(progressBarInstall);
+            installStatusPanel.Controls.Add(btnStopInstall);
+            installStatusPanel.Layout += (s, e) =>
+            {
+                var r = installStatusPanel.DisplayRectangle;
+                btnStopInstall.Location = new Point(r.Right - btnStopInstall.Width, r.Top + (r.Height - btnStopInstall.Height) / 2);
+                int w = btnStopInstall.Left - r.Left - 20;
+                lblInstallStatus.SetBounds(r.Left, r.Top, w, 26);
+                progressBarInstall.SetBounds(r.Left, r.Bottom - progressBarInstall.Height - 4, w, progressBarInstall.Height);
+            };
+            installStatusPanel.VisibleChanged += (s, e) => spacer.Visible = installStatusPanel.Visible;
+        }
+
+        // ── Programlar sayfası ─────────────────────────────────────────────
+        private Panel BuildProgramsPage()
+        {
+            var page = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
+
             lblTotalCount = new Label
             {
-                Text = "Toplam: 0 Program",
-                ForeColor = C(148, 163, 184),
-                Font = UiFont(11F, FontStyle.Bold),
-                AutoSize = true,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                AutoSize = false,
+                Size = new Size(150, 34),
+                Font = Theme.Body(9.5f, FontStyle.Bold),
+                ForeColor = Theme.TextMuted,
                 TextAlign = ContentAlignment.MiddleRight,
-                Location = new Point(800, 25)
+                BackColor = Theme.Bg
             };
+            var header = BuildPageHeader("Programlar",
+                "programlar klasöründeki kurulum dosyaları — işaretle, sırayla kur.", lblTotalCount);
 
-            headerPanel.Controls.Add(lblTitle);
-            headerPanel.Controls.Add(lblCredit);
-            headerPanel.Controls.Add(lblTotalCount);
-
-            // Resize event to reposition lblTotalCount
-            headerPanel.Resize += (s, ev) =>
+            // Araç çubuğu: arama + işlemler
+            var toolbar = new Panel { Dock = DockStyle.Top, Height = 58, BackColor = Theme.Bg };
+            txtSearch = new DarkTextBox(Theme.Glyph.Search)
             {
-                lblTotalCount.Location = new Point(
-                    headerPanel.ClientSize.Width - lblTotalCount.Width - 20,
-                    25);
+                Placeholder = "Program ara…  (Ctrl+F)",
+                Size = new Size(300, 40),
+                Location = new Point(0, 2)
+            };
+            txtSearch.TextChanged += (s, e) => ApplyFilter();
+
+            btnAdd = new ModernButton { Text = "Program Ekle", Glyph = Theme.Glyph.Add, Kind = ButtonKind.Primary, Height = 40 }.AutoWidth();
+            btnAdd.Click += BtnAdd_Click;
+            btnRemove = new ModernButton { Text = "Sil", Glyph = Theme.Glyph.Delete, Kind = ButtonKind.Danger, Height = 40 }.AutoWidth(84);
+            btnRemove.Click += BtnRemove_Click;
+            btnOpenDatabase = new ModernButton { Text = "Klasör", Glyph = Theme.Glyph.Folder, Height = 40 }.AutoWidth();
+            btnOpenDatabase.Click += BtnOpenDatabase_Click;
+            btnSync = new ModernButton { Glyph = Theme.Glyph.Refresh, Height = 40, Width = 44 };
+            btnSync.Click += BtnSync_Click;
+            new ToolTip().SetToolTip(btnSync, "Klasörü tara ve listeyi yenile");
+
+            var toolButtons = new ModernButton[] { btnSync, btnOpenDatabase, btnRemove, btnAdd };
+            toolbar.Controls.Add(txtSearch);
+            foreach (var b in toolButtons) toolbar.Controls.Add(b);
+            toolbar.Layout += (s, e) =>
+            {
+                int x = toolbar.Width;
+                foreach (var b in toolButtons)
+                {
+                    x -= b.Width;
+                    b.Location = new Point(x, 2);
+                    x -= 8;
+                }
+                txtSearch.Width = Math.Max(180, Math.Min(340, x - 16));
             };
 
-            // DataGridView - Modern görünüm
+            // Liste kartı
+            var gridCard = new Card { Dock = DockStyle.Fill, Padding = new Padding(1, 6, 1, 6) };
+            BuildGrid();
+            emptyState = BuildEmptyState();
+            gridCard.Controls.Add(gridPrograms);
+            gridCard.Controls.Add(emptyState);
+
+            // Alt eylem çubuğu
+            var actionBar = new Panel { Dock = DockStyle.Bottom, Height = 66, BackColor = Theme.Bg };
+            btnSelectAll = new ModernButton { Text = "Tümünü Seç", Glyph = Theme.Glyph.SelectAll, Kind = ButtonKind.Ghost, Height = 40 }.AutoWidth();
+            btnSelectAll.Click += BtnSelectAll_Click;
+            btnDeselectAll = new ModernButton { Text = "Seçimi Kaldır", Glyph = Theme.Glyph.Close, Kind = ButtonKind.Ghost, Height = 40 }.AutoWidth();
+            btnDeselectAll.Click += BtnDeselectAll_Click;
+            lblSelection = new Label
+            {
+                AutoSize = false,
+                Size = new Size(200, 40),
+                Font = Theme.Body(9.5f),
+                ForeColor = Theme.TextMuted,
+                TextAlign = ContentAlignment.MiddleLeft,
+                BackColor = Theme.Bg
+            };
+            btnInstallSelected = new ModernButton
+            {
+                Text = "Seçilenleri Kur",
+                Glyph = Theme.Glyph.Play,
+                Kind = ButtonKind.Primary,
+                Height = 44,
+                Font = Theme.Body(10.5f, FontStyle.Bold)
+            }.AutoWidth(190);
+            btnInstallSelected.Click += BtnInstallSelected_Click;
+
+            actionBar.Controls.AddRange(new Control[] { btnSelectAll, btnDeselectAll, lblSelection, btnInstallSelected });
+            actionBar.Layout += (s, e) =>
+            {
+                int y = 16;
+                btnSelectAll.Location = new Point(0, y + 2);
+                btnDeselectAll.Location = new Point(btnSelectAll.Right + 6, y + 2);
+                lblSelection.Location = new Point(btnDeselectAll.Right + 14, y + 2);
+                btnInstallSelected.Location = new Point(actionBar.Width - btnInstallSelected.Width, y);
+                lblSelection.Width = Math.Max(0, btnInstallSelected.Left - lblSelection.Left - 10);
+            };
+
+            page.Controls.Add(gridCard);   // Fill
+            page.Controls.Add(actionBar);  // Bottom
+            page.Controls.Add(toolbar);    // Top (alt)
+            page.Controls.Add(header);     // Top (üst)
+            return page;
+        }
+
+        private Panel BuildEmptyState()
+        {
+            var panel = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Surface, Visible = false };
+            var badge = new IconBadge(Theme.Glyph.Programs, Theme.Accent) { Size = new Size(64, 64) };
+            var title = UiFactory.Label("Henüz program yok", Theme.Heading(15f), Theme.Text);
+            var sub = UiFactory.Label("Kurulum dosyalarını (.exe / .msi) eklemek için \"Program Ekle\"ye tıkla\nveya dosyaları programlar klasörüne kopyalayıp yenile.",
+                Theme.Body(10f), Theme.TextMuted);
+            sub.TextAlign = ContentAlignment.MiddleCenter;
+            var add = new ModernButton { Text = "Program Ekle", Glyph = Theme.Glyph.Add, Kind = ButtonKind.Primary, Height = 40 }.AutoWidth();
+            add.Click += BtnAdd_Click;
+            panel.Controls.AddRange(new Control[] { badge, title, sub, add });
+            panel.Layout += (s, e) =>
+            {
+                int cx = panel.Width / 2;
+                int top = Math.Max(20, panel.Height / 2 - 110);
+                badge.Location = new Point(cx - badge.Width / 2, top);
+                title.Location = new Point(cx - title.Width / 2, badge.Bottom + 18);
+                sub.Location = new Point(cx - sub.Width / 2, title.Bottom + 8);
+                add.Location = new Point(cx - add.Width / 2, sub.Bottom + 20);
+            };
+            return panel;
+        }
+
+        private void BuildGrid()
+        {
             gridPrograms = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = C(30, 41, 59),
-                GridColor = C(51, 65, 85),
+                BackgroundColor = Theme.Surface,
+                GridColor = Theme.Border,
                 BorderStyle = BorderStyle.None,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
                 AllowUserToOrderColumns = false,
-                MultiSelect = true,
+                AllowUserToResizeColumns = false,
+                MultiSelect = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 ReadOnly = false,
                 RowHeadersVisible = false,
                 AutoGenerateColumns = false,
                 EnableHeadersVisualStyles = false,
-                Font = UiFont(10F),
-                ForeColor = C(226, 232, 240),
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = C(30, 41, 59), ForeColor = C(226, 232, 240) },
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    BackColor = C(15, 23, 42),
-                    ForeColor = C(226, 232, 240),
-                    SelectionBackColor = C(37, 99, 235),
-                    SelectionForeColor = Color.White,
-                    Padding = new Padding(6, 0, 6, 0)
-                },
-                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-                {
-                    BackColor = C(30, 41, 59),
-                    ForeColor = C(148, 163, 184),
-                    Font = UiFont(9F, FontStyle.Bold),
-                    SelectionBackColor = C(30, 41, 59),
-                    SelectionForeColor = C(148, 163, 184),
-                    Alignment = DataGridViewContentAlignment.MiddleLeft,
-                    Padding = new Padding(6, 0, 6, 0)
-                },
+                Font = Theme.Body(10f),
+                ForeColor = Theme.Text,
                 ColumnHeadersHeight = 42,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 EditMode = DataGridViewEditMode.EditOnEnter,
-                RowTemplate = { Height = 42 },
                 ShowCellToolTips = true,
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
+                CellBorderStyle = DataGridViewCellBorderStyle.None,
+                StandardTab = true
+            };
+            gridPrograms.RowTemplate.Height = 48;
+            gridPrograms.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Theme.Surface,
+                ForeColor = Theme.Text,
+                SelectionBackColor = Theme.SurfaceHover,
+                SelectionForeColor = Theme.Text,
+                Padding = new Padding(10, 0, 10, 0)
+            };
+            gridPrograms.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Theme.Surface };
+            gridPrograms.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Theme.Surface,
+                ForeColor = Theme.TextDim,
+                Font = Theme.Body(8.25f, FontStyle.Bold),
+                SelectionBackColor = Theme.Surface,
+                SelectionForeColor = Theme.TextDim,
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                Padding = new Padding(10, 0, 10, 0)
             };
 
             var colSelect = new DataGridViewCheckBoxColumn
             {
-                Name = ColSelect,
-                HeaderText = "",
-                Width = 44,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = false,
-                SortMode = DataGridViewColumnSortMode.NotSortable
+                Name = ColSelect, HeaderText = "", Width = 52,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None, SortMode = DataGridViewColumnSortMode.NotSortable
             };
-
             var colName = new DataGridViewTextBoxColumn
             {
-                Name = ColName,
-                HeaderText = "💻 Program Adı",
-                Width = 320,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
+                Name = ColName, HeaderText = "PROGRAM", MinimumWidth = 160,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable
             };
-
-
-
             var colSize = new DataGridViewTextBoxColumn
             {
-                Name = ColSize,
-                HeaderText = "💾 Boyut",
-                Width = 90,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
+                Name = ColSize, HeaderText = "BOYUT", Width = 100,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable
             };
-
             var colAdded = new DataGridViewTextBoxColumn
             {
-                Name = ColAdded,
-                HeaderText = "📅 Tarih",
-                Width = 120,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
+                Name = ColAdded, HeaderText = "EKLENME", Width = 150,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable
             };
-
             var colStatus = new DataGridViewTextBoxColumn
             {
-                Name = ColStatus,
-                HeaderText = "✓ Durum",
-                Width = 120,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                ReadOnly = true,
-                SortMode = DataGridViewColumnSortMode.NotSortable
+                Name = ColStatus, HeaderText = "DURUM", Width = 210,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable
             };
+            colSize.DefaultCellStyle.ForeColor = Theme.TextMuted;
+            colSize.DefaultCellStyle.SelectionForeColor = Theme.TextMuted;
+            colAdded.DefaultCellStyle.ForeColor = Theme.TextMuted;
+            colAdded.DefaultCellStyle.SelectionForeColor = Theme.TextMuted;
 
-            gridPrograms.Columns.AddRange(new DataGridViewColumn[]
-            {
-                colSelect, colName, colSize, colAdded, colStatus
-            });
+            gridPrograms.Columns.AddRange(new DataGridViewColumn[] { colSelect, colName, colSize, colAdded, colStatus });
 
             gridPrograms.CurrentCellDirtyStateChanged += GridPrograms_CurrentCellDirtyStateChanged;
             gridPrograms.CellDoubleClick += GridPrograms_CellDoubleClick;
-
-            // Kurulum durum paneli (progress bar)
-            installStatusPanel = new Panel
+            gridPrograms.CellPainting += GridPrograms_CellPainting;
+            gridPrograms.RowPostPaint += (s, e) =>
             {
-                Dock = DockStyle.Bottom,
-                Height = 85,
-                Padding = new Padding(20, 12, 20, 12),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                Visible = false
+                // İnce satır ayırıcı (kart kenarlarına değmeden)
+                int y = e.RowBounds.Bottom - 1;
+                using (var p = new Pen(Theme.Border))
+                    e.Graphics.DrawLine(p, e.RowBounds.Left + 14, y, e.RowBounds.Right - 14, y);
             };
+            gridPrograms.CellValueChanged += (s, e) => { if (e.ColumnIndex == 0) UpdateSelectionInfo(); };
+            gridPrograms.Resize += (s, e) => UpdateResponsiveColumns();
+            Theme.DarkScrollbars(gridPrograms);
+        }
 
-            lblInstallStatus = new Label
+        private void UpdateResponsiveColumns()
+        {
+            // Dar pencerede tarih sütununu gizle ki program adı sığsın
+            gridPrograms.Columns[ColAdded].Visible = gridPrograms.Width > 760;
+            gridPrograms.Columns[ColSize].Visible = gridPrograms.Width > 560;
+        }
+
+        private void GridPrograms_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            var g = e.Graphics;
+            string colName = gridPrograms.Columns[e.ColumnIndex].Name;
+
+            if (colName == ColSelect)
             {
-                Dock = DockStyle.Top,
-                Height = 18,
-                Text = "",
-                ForeColor = C(15, 23, 42),
-                Font = UiFont(9F, FontStyle.Bold)
-            };
-
-            progressBarInstall = new ProgressBar
-            {
-                Dock = DockStyle.Fill,
-                Height = 16,
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0,
-                Style = ProgressBarStyle.Continuous
-            };
-
-            btnStopInstall = new Button
-            {
-                Text = "Durdur",
-                Size = new Size(110, 28),
-                BackColor = C(239, 68, 68),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = UiFont(9F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Enabled = false
-            };
-            btnStopInstall.FlatAppearance.BorderSize = 0;
-            btnStopInstall.Click += BtnStopInstall_Click;
-
-            var installLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 2,
-                BackColor = Color.Transparent
-            };
-            installLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            installLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-            installLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-
-            lblInstallStatus.Dock = DockStyle.Fill;
-            btnStopInstall.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-
-            installLayout.Controls.Add(lblInstallStatus, 0, 0);
-            installLayout.Controls.Add(btnStopInstall, 1, 0);
-            installLayout.SetColumnSpan(progressBarInstall, 2);
-            installLayout.Controls.Add(progressBarInstall, 0, 1);
-
-            installStatusPanel.Controls.Add(installLayout);
-
-            // ══════════════════════════════════════════════════════════════════
-            // Sağ taraf: Kategorili buton paneli
-            // ══════════════════════════════════════════════════════════════════
-            Panel rightPanel = new Panel
-            {
-                Dock = DockStyle.Right,
-                Width = 175,
-                BackColor = C(20, 27, 45),
-                Padding = new Padding(0)
-            };
-
-            // İnce ayırıcı çizgi (sol kenar)
-            var separator = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 2,
-                BackColor = C(59, 130, 246)
-            };
-
-            // Butonların yerleşeceği FlowLayoutPanel (dikey)
-            var sideFlow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoScroll = true,
-                BackColor = Color.Transparent,
-                Padding = new Padding(10, 8, 10, 8)
-            };
-
-            // ── Yardımcı: Kategori başlığı oluştur
-            Func<string> lastCat = () => "";
-            Action<FlowLayoutPanel, string> addCategoryLabel = (flow, text) =>
-            {
-                var lbl = new Label
+                e.PaintBackground(e.ClipBounds, true);
+                Theme.HighQuality(g);
+                bool on = IsRowChecked(gridPrograms.Rows[e.RowIndex]);
+                var box = new RectangleF(e.CellBounds.X + (e.CellBounds.Width - 20) / 2f,
+                    e.CellBounds.Y + (e.CellBounds.Height - 20) / 2f, 20, 20);
+                using (var path = Theme.RoundRect(box, 6))
                 {
-                    Text = text.ToUpperInvariant(),
-                    ForeColor = C(100, 116, 139),
-                    Font = UiFont(7.5F, FontStyle.Bold),
-                    AutoSize = false,
-                    Width = 150,
-                    Height = 22,
-                    TextAlign = ContentAlignment.BottomLeft,
-                    Margin = new Padding(0, 6, 0, 2)
-                };
-                flow.Controls.Add(lbl);
-
-                // İnce ayırıcı
-                var line = new Panel
+                    using (var b = new SolidBrush(on ? Theme.Accent : Theme.Bg)) g.FillPath(b, path);
+                    using (var p = new Pen(on ? Theme.Accent : Theme.BorderStrong, 1.5f)) g.DrawPath(p, path);
+                }
+                if (on)
                 {
-                    Width = 150,
-                    Height = 1,
-                    BackColor = C(51, 65, 85),
-                    Margin = new Padding(0, 0, 0, 4)
-                };
-                flow.Controls.Add(line);
-            };
+                    Theme.DrawText(g, Theme.Glyph.Check, Theme.Icon(9f), Rectangle.Round(box), Color.White,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                }
+                e.Handled = true;
+                return;
+            }
 
-            // ── Yardımcı: Yan panel butonu oluştur
-            Func<string, Color, Button> createSideButton = (text, color) =>
+            if (colName == ColStatus)
             {
-                var btn = new Button
-                {
-                    Text = text,
-                    Size = new Size(150, 34),
-                    BackColor = color,
-                    ForeColor = Color.White,
-                    FlatStyle = FlatStyle.Flat,
-                    Font = UiFont(8.5F, FontStyle.Bold),
-                    Cursor = Cursors.Hand,
-                    Margin = new Padding(0, 2, 0, 2),
-                    TextAlign = ContentAlignment.MiddleCenter
-                };
-                btn.FlatAppearance.BorderSize = 0;
-                btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(
-                    Math.Min(255, color.R + 30),
-                    Math.Min(255, color.G + 30),
-                    Math.Min(255, color.B + 30));
-                btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(
-                    Math.Max(0, color.R - 30),
-                    Math.Max(0, color.G - 30),
-                    Math.Max(0, color.B - 30));
-                return btn;
-            };
+                e.PaintBackground(e.ClipBounds, true);
+                string text = Convert.ToString(e.Value ?? "");
+                if (text.Length == 0) { e.Handled = true; return; }
 
-            // ── Kategori: OTOMATİK (en üstte, öne çıkan) ──
-            addCategoryLabel(sideFlow, "🚀 Otomatik");
-
-            btnFullSetup = createSideButton("🚀 TAM KURULUM", C(234, 88, 12));
-            btnFullSetup.Size = new Size(150, 44);
-            btnFullSetup.Font = UiFont(9.5F, FontStyle.Bold);
-            btnFullSetup.Click += BtnFullSetup_Click;
-            sideFlow.Controls.Add(btnFullSetup);
-
-            // ── Kategori: SEÇİM ──
-            addCategoryLabel(sideFlow, "📋 Seçim");
-
-            btnSelectAll = createSideButton("✔ Tümünü Seç", C(16, 185, 129));
-            btnSelectAll.Click += BtnSelectAll_Click;
-            sideFlow.Controls.Add(btnSelectAll);
-
-            btnDeselectAll = createSideButton("✕ Seçimi Kaldır", C(100, 116, 139));
-            btnDeselectAll.Click += BtnDeselectAll_Click;
-            sideFlow.Controls.Add(btnDeselectAll);
-
-            btnInstallSelected = createSideButton("▶ Seçilenleri Kur", C(59, 130, 246));
-            btnInstallSelected.Click += BtnInstallSelected_Click;
-            sideFlow.Controls.Add(btnInstallSelected);
-
-            // ── Kategori: PROGRAM ──
-            addCategoryLabel(sideFlow, "💻 Program");
-
-            btnAdd = createSideButton("➕ Program Ekle", C(16, 185, 129));
-            btnAdd.Click += BtnAdd_Click;
-            sideFlow.Controls.Add(btnAdd);
-
-            btnRemove = createSideButton("🗑 Sil", C(239, 68, 68));
-            btnRemove.Click += BtnRemove_Click;
-            sideFlow.Controls.Add(btnRemove);
-
-            // ── Kategori: DOSYA ──
-            addCategoryLabel(sideFlow, "📁 Dosya");
-
-            btnOpenDatabase = createSideButton("📂 Klasör Aç", C(124, 58, 237));
-            btnOpenDatabase.Click += BtnOpenDatabase_Click;
-            sideFlow.Controls.Add(btnOpenDatabase);
-
-            btnSync = createSideButton("🔄 Yenile", C(245, 158, 11));
-            btnSync.Click += BtnSync_Click;
-            sideFlow.Controls.Add(btnSync);
-
-            btnDownload = createSideButton("🌐 İndir", C(124, 58, 237));
-            btnDownload.Click += BtnDownload_Click;
-            sideFlow.Controls.Add(btnDownload);
-
-            // ── Kategori: ARAÇLAR ──
-            addCategoryLabel(sideFlow, "🔧 Araçlar");
-
-            btnActivate = createSideButton("🔑 Etkinleştir", C(220, 38, 38));
-            btnActivate.Click += BtnActivate_Click;
-            sideFlow.Controls.Add(btnActivate);
-
-            btnPowerShell = createSideButton("⚡ PowerShell", C(0, 120, 212));
-            btnPowerShell.Click += BtnPowerShell_Click;
-            sideFlow.Controls.Add(btnPowerShell);
-
-            // ── Kategori: GÜVENLİK ──
-            addCategoryLabel(sideFlow, "🛡️ Güvenlik");
-
-            btnDefenderOff = createSideButton("🛡️ Defender Kapat", C(180, 30, 30));
-            btnDefenderOff.Click += BtnDefenderOff_Click;
-            sideFlow.Controls.Add(btnDefenderOff);
-
-            btnDefenderOn = createSideButton("✅ Defender Aç", C(16, 130, 60));
-            btnDefenderOn.Click += BtnDefenderOn_Click;
-            sideFlow.Controls.Add(btnDefenderOn);
-
-            // ── Kategori: WINDOWS UPDATE ──
-            addCategoryLabel(sideFlow, "🔄 Windows Update");
-
-            btnUpdateBlock = createSideButton("⛔ Update Engelle", C(180, 80, 0));
-            btnUpdateBlock.Click += BtnUpdateBlock_Click;
-            sideFlow.Controls.Add(btnUpdateBlock);
-
-            btnUpdateAllow = createSideButton("✅ Update Aç", C(16, 130, 60));
-            btnUpdateAllow.Click += BtnUpdateAllow_Click;
-            sideFlow.Controls.Add(btnUpdateAllow);
-
-            // ── Kategori: SİSTEM ──
-            addCategoryLabel(sideFlow, "🧰 Sistem");
-
-            btnBloatware = createSideButton("🧹 Bloatware Temizle", C(168, 85, 247));
-            btnBloatware.Click += BtnBloatware_Click;
-            sideFlow.Controls.Add(btnBloatware);
-
-            rightPanel.Controls.Add(sideFlow);
-            rightPanel.Controls.Add(separator);
-
-            // WinForms Dock kuralı: Right panel, Bottom paneller, Top paneller, Fill en son
-            this.Controls.Add(gridPrograms);        // Fill
-            this.Controls.Add(headerPanel);         // Top
-            this.Controls.Add(installStatusPanel);  // Bottom
-            this.Controls.Add(rightPanel);          // Right
-
-            this.ResumeLayout(false);
+                Theme.HighQuality(g);
+                var cell = gridPrograms.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                Color tone = cell.Tag is Color ? (Color)cell.Tag : Theme.TextDim;
+                var font = Theme.Body(8.75f, FontStyle.Bold);
+                Size sz = TextRenderer.MeasureText(g, text, font, Size.Empty, TextFormatFlags.NoPadding);
+                int maxW = e.CellBounds.Width - 20;
+                int w = Math.Min(maxW, sz.Width + 30);
+                var pill = new RectangleF(e.CellBounds.X + 10, e.CellBounds.Y + (e.CellBounds.Height - 26) / 2f, w, 26);
+                using (var path = Theme.RoundRect(pill, 13))
+                using (var b = new SolidBrush(Theme.WithAlpha(tone, 34)))
+                    g.FillPath(b, path);
+                using (var dot = new SolidBrush(tone))
+                    g.FillEllipse(dot, pill.X + 10, pill.Y + 10, 6, 6);
+                Theme.DrawText(g, text, font, new Rectangle((int)pill.X + 21, (int)pill.Y, (int)pill.Width - 26, (int)pill.Height), tone,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                e.Handled = true;
+            }
         }
 
         // Programatik icon oluşturma
@@ -509,22 +631,111 @@ namespace AIOInstaller
             using (var bmp = new Bitmap(32, 32))
             using (var g = Graphics.FromImage(bmp))
             {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                // Koyu arka plan
-                g.FillRectangle(new SolidBrush(C(15, 23, 42)), 0, 0, 32, 32);
-                // Mavi daire
-                g.FillEllipse(new SolidBrush(C(37, 99, 235)), 3, 3, 26, 26);
-                // Beyaz "A" harfi
+                Theme.HighQuality(g);
+                using (var path = Theme.RoundRect(new RectangleF(1, 1, 30, 30), 8))
+                using (var lg = new System.Drawing.Drawing2D.LinearGradientBrush(new RectangleF(0, 0, 32, 32), Theme.Accent, Theme.HeroFrom, 45f))
+                    g.FillPath(lg, path);
                 using (var font = new Font("Arial", 14, FontStyle.Bold, GraphicsUnit.Point))
                 {
                     var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    g.DrawString("A", font, Brushes.White, new RectangleF(0, 0, 32, 32), sf);
+                    g.DrawString("A", font, Brushes.White, new RectangleF(0, 1, 32, 32), sf);
                 }
-                // Bitmap'i icon'a çevir
                 IntPtr hIcon = bmp.GetHicon();
                 return Icon.FromHandle(hIcon);
             }
         }
+
+        // ── Sistem Araçları sayfası ───────────────────────────────────────
+        private Panel BuildToolsPage()
+        {
+            var page = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg, Visible = false };
+            var header = BuildPageHeader("Sistem Araçları",
+                "Tek seferlik sistem ayarları. Hepsi yönetici yetkisiyle çalışır ve önce onay ister.", null);
+
+            var flow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Bg,
+                AutoScroll = true,
+                WrapContents = true,
+                Padding = new Padding(0, 4, 0, 0)
+            };
+
+            btnDefenderOff = new ModernButton { Text = "Kapat", Glyph = Theme.Glyph.Close, Kind = ButtonKind.Danger, Height = 38 }.AutoWidth(110);
+            btnDefenderOff.Click += BtnDefenderOff_Click;
+            btnDefenderOn = new ModernButton { Text = "Aç", Glyph = Theme.Glyph.Check, Kind = ButtonKind.Success, Height = 38 }.AutoWidth(110);
+            btnDefenderOn.Click += BtnDefenderOn_Click;
+
+            btnUpdateBlock = new ModernButton { Text = "Engelle", Glyph = Theme.Glyph.Close, Kind = ButtonKind.Danger, Height = 38 }.AutoWidth(110);
+            btnUpdateBlock.Click += BtnUpdateBlock_Click;
+            btnUpdateAllow = new ModernButton { Text = "Aç", Glyph = Theme.Glyph.Check, Kind = ButtonKind.Success, Height = 38 }.AutoWidth(110);
+            btnUpdateAllow.Click += BtnUpdateAllow_Click;
+
+            btnBloatware = new ModernButton { Text = "Temizle", Glyph = Theme.Glyph.Broom, Kind = ButtonKind.Primary, Height = 38 }.AutoWidth(120);
+            btnBloatware.Click += BtnBloatware_Click;
+
+            btnPowerShell = new ModernButton { Text = "Uygula", Glyph = Theme.Glyph.Terminal, Kind = ButtonKind.Primary, Height = 38 }.AutoWidth(120);
+            btnPowerShell.Click += BtnPowerShell_Click;
+
+            btnActivate = new ModernButton { Text = "Çalıştır", Glyph = Theme.Glyph.Play, Kind = ButtonKind.Secondary, Height = 38 }.AutoWidth(120);
+            btnActivate.Click += BtnActivate_Click;
+
+            flow.Controls.Add(ToolCard(Theme.Glyph.Shield, Theme.Danger, "Windows Defender",
+                "Gerçek zamanlı korumayı kapat veya geri aç. Kurulumlarda engellemeyi önler.",
+                btnDefenderOff, btnDefenderOn));
+            flow.Controls.Add(ToolCard(Theme.Glyph.Update, Theme.Warning, "Windows Update",
+                "Güncelleme servislerini (wuauserv, UsoSvc, BITS) durdur ya da yeniden başlat.",
+                btnUpdateBlock, btnUpdateAllow));
+            flow.Controls.Add(ToolCard(Theme.Glyph.Broom, Color.FromArgb(192, 132, 252), "Bloatware Temizle",
+                "Xbox, Haritalar, Skype, Solitaire gibi gereksiz uygulamaları kaldırır. Mağaza ve Hesap Makinesi kalır.",
+                btnBloatware));
+            flow.Controls.Add(ToolCard(Theme.Glyph.Share, Theme.Info, "Ağ Paylaşımı (SMB)",
+                "Misafir erişimine izin verir, SMB imza zorunluluğunu kaldırır. Eski NAS ve yazıcılar için.",
+                btnPowerShell));
+            flow.Controls.Add(ToolCard(Theme.Glyph.Key, Theme.Success, "Windows / Office Etkinleştir",
+                "Microsoft Activation Scripts (massgrave.dev) yönetici PowerShell penceresinde açılır.",
+                btnActivate));
+
+            Theme.DarkScrollbars(flow);
+            page.Controls.Add(flow);
+            page.Controls.Add(header);
+            return page;
+        }
+
+        private static Card ToolCard(string glyph, Color tint, string title, string description, params ModernButton[] actions)
+        {
+            var card = new Card { Size = new Size(352, 214), Margin = new Padding(0, 0, 18, 18), Padding = new Padding(22) };
+            var badge = new IconBadge(glyph, tint) { Location = new Point(22, 22), Size = new Size(44, 44) };
+            var lblTitle = UiFactory.Label(title, Theme.Heading(13f), Theme.Text);
+            lblTitle.Location = new Point(80, 32);
+            var lblDesc = new Label
+            {
+                Text = description,
+                Font = Theme.Body(9.5f),
+                ForeColor = Theme.TextMuted,
+                BackColor = Theme.Surface,
+                UseMnemonic = false,
+                AutoSize = false,
+                Location = new Point(22, 80),
+                Size = new Size(308, 62)
+            };
+            card.Controls.Add(badge);
+            card.Controls.Add(lblTitle);
+            card.Controls.Add(lblDesc);
+
+            int x = 22;
+            foreach (var b in actions)
+            {
+                b.Location = new Point(x, 156);
+                card.Controls.Add(b);
+                x += b.Width + 10;
+            }
+            return card;
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // LİSTE
+        // ══════════════════════════════════════════════════════════════════
 
         private void LoadPrograms()
         {
@@ -536,7 +747,7 @@ namespace AIOInstaller
         {
             gridPrograms.SuspendLayout();
             gridPrograms.Rows.Clear();
-            lblTotalCount.Text = $"Toplam: {programs.Count} Program";
+            lblTotalCount.Text = programs.Count + " program";
 
             foreach (var program in programs.OrderBy(p => p.Name))
             {
@@ -550,36 +761,46 @@ namespace AIOInstaller
                         program.Name ?? "(isimsiz)",
                         ProgramManager.FormatFileSize(program.FileSize),
                         program.AddedDate.ToString("dd.MM.yyyy HH:mm"),
-                        fileExists ? "Bekliyor" : "⚠ Dosya Yok"
+                        fileExists ? StatusWaiting : "Dosya yok"
                     );
 
                     var row = gridPrograms.Rows[idx];
                     row.Tag = program;
-
-                    if (!fileExists)
-                    {
-                        row.DefaultCellStyle.ForeColor = C(239, 68, 68);
-                        row.DefaultCellStyle.BackColor = C(30, 41, 59);
-                    }
-                    else
-                    {
-                        row.DefaultCellStyle.ForeColor = C(226, 232, 240);
-                        row.DefaultCellStyle.BackColor = C(15, 23, 42);
-                    }
+                    row.Cells[ColStatus].Tag = fileExists ? Theme.TextDim : Theme.Danger;
+                    row.Cells[ColName].ToolTipText = program.FileName;
                 }
                 catch { /* Satır eklenirken hata olursa atla */ }
             }
 
-            if (programs.Count == 0)
-            {
-                int idx = gridPrograms.Rows.Add(false, "Henüz program eklenmemiş", "", "", "");
-                var row = gridPrograms.Rows[idx];
-                row.ReadOnly = true;
-                row.DefaultCellStyle.ForeColor = C(100, 116, 139);
-                row.DefaultCellStyle.BackColor = C(30, 41, 59);
-            }
-
             gridPrograms.ResumeLayout();
+            emptyState.Visible = programs.Count == 0;
+            gridPrograms.Visible = programs.Count > 0;
+            ApplyFilter();
+            UpdateSelectionInfo();
+        }
+
+        private void ApplyFilter()
+        {
+            if (gridPrograms == null) return;
+            string q = (txtSearch.Text ?? "").Trim();
+            var culture = new CultureInfo("tr-TR");
+            gridPrograms.CurrentCell = null;
+            foreach (DataGridViewRow row in gridPrograms.Rows)
+            {
+                string name = Convert.ToString(row.Cells[ColName].Value ?? "");
+                row.Visible = q.Length == 0 || culture.CompareInfo.IndexOf(name, q, CompareOptions.IgnoreCase) >= 0;
+            }
+        }
+
+        private void UpdateSelectionInfo()
+        {
+            if (lblSelection == null) return;
+            int count = gridPrograms.Rows.Cast<DataGridViewRow>().Count(r => r.Tag != null && IsRowChecked(r));
+            lblSelection.Text = count == 0 ? "Kurmak için programları işaretle" : count + " program seçildi";
+            lblSelection.ForeColor = count == 0 ? Theme.TextDim : Theme.Text;
+            btnInstallSelected.Text = count == 0 ? "Seçilenleri Kur" : "Seçilenleri Kur (" + count + ")";
+            btnInstallSelected.AutoWidth(190);
+            btnInstallSelected.Parent?.PerformLayout();
         }
 
         private async void BtnAdd_Click(object sender, EventArgs e)
@@ -631,7 +852,7 @@ namespace AIOInstaller
 
                         if (messages.Length > 0)
                         {
-                            MessageBox.Show(messages.ToString().Trim(),
+                            Dialogs.Show(messages.ToString().Trim(),
                                 result.duplicates.Count > 0 ? "Ekleme Tamamlandı (Uyarılar Var)" : "Başarılı",
                                 MessageBoxButtons.OK,
                                 result.duplicates.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
@@ -639,7 +860,7 @@ namespace AIOInstaller
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Hata oluştu: {ex.Message}", "Hata", 
+                        Dialogs.Show($"Hata oluştu: {ex.Message}", "Hata", 
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     finally
@@ -656,7 +877,7 @@ namespace AIOInstaller
             gridPrograms.EndEdit();
             foreach (DataGridViewRow row in gridPrograms.Rows)
             {
-                if (row.Tag != null)
+                if (row.Tag != null && row.Visible)
                 {
                     row.Cells[ColSelect].Value = true;
                 }
@@ -689,7 +910,7 @@ namespace AIOInstaller
         {
             if (gridPrograms.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Lütfen yüklenecek bir program seçin!", "Uyarı", 
+                Dialogs.Show("Lütfen yüklenecek bir program seçin!", "Uyarı", 
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -703,7 +924,7 @@ namespace AIOInstaller
             ProgramInfo program = selectedRow.Tag as ProgramInfo;
             if (program != null)
             {
-                DialogResult result = MessageBox.Show(
+                DialogResult result = Dialogs.Show(
                     $"{program.Name} programını yüklemek istediğinizden emin misiniz?",
                     "Onay",
                     MessageBoxButtons.YesNo,
@@ -736,14 +957,14 @@ namespace AIOInstaller
 
             if (plannedRows.Count == 0)
             {
-                MessageBox.Show("Lütfen yüklenecek programları seçin!", "Uyarı",
+                Dialogs.Show("Lütfen yüklenecek programları seçin!", "Uyarı",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             var checkedPrograms = plannedRows.Select(r => (ProgramInfo)r.Tag).ToList();
             string programList = string.Join("\n", checkedPrograms.Select(p => $"• {p.Name}"));
-            DialogResult result = MessageBox.Show(
+            DialogResult result = Dialogs.Show(
                 $"Seçilen {checkedPrograms.Count} programı yukarıdan aşağı sırayla yüklemek istediğinizden emin misiniz?\n\n{programList}\n\nNot: Kurulum sırasında tik kaldırırsanız o program atlanır.",
                 "Onay",
                 MessageBoxButtons.YesNo,
@@ -776,7 +997,7 @@ namespace AIOInstaller
                 else
                 {
                     lblInstallStatus.Text = $"Bitti: {successCount}/{plannedRows.Count} program başarıyla kuruldu.";
-                    MessageBox.Show(
+                    Dialogs.Show(
                         $"{successCount}/{plannedRows.Count} program başarıyla kuruldu. Detay için 'Durum' sütununa bakabilirsiniz." +
                         (rebootRequired ? "\n\nBazı programlar için bilgisayarın yeniden başlatılması gerekiyor." : ""),
                         "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -803,7 +1024,7 @@ namespace AIOInstaller
         /// installCts ve UI durumunu (panel/buton) ayarlamış olmalıdır. Başarıyla kurulan
         /// (çıkış kodu 0/3010/1641 veya takip edilemeyen) program sayısını döndürür. Hem "Seçilenleri Kur" hem de "Tam Kurulum" bunu kullanır.
         /// </summary>
-        private async Task<int> RunInstallLoopAsync(List<DataGridViewRow> plannedRows)
+        private async Task<int> RunInstallLoopAsync(List<DataGridViewRow> plannedRows, string statusPrefix = "")
         {
             progressBarInstall.Style = ProgressBarStyle.Continuous;
             progressBarInstall.Minimum = 0;
@@ -825,13 +1046,13 @@ namespace AIOInstaller
                 // Kullanıcı sıradaki programın tikini kaldırdıysa es geç
                 if (!IsRowChecked(row))
                 {
-                    SetRowStatus(row, "Atlandı", C(238, 238, 238));
+                    SetRowStatus(row, "Atlandı", Theme.TextDim);
                     progressBarInstall.Value = i + 1;
                     continue;
                 }
 
-                SetRowStatus(row, "Kuruluyor...", C(255, 249, 196));
-                lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) Kuruluyor: {program.Name}";
+                SetRowStatus(row, "Kuruluyor...", Theme.Accent);
+                lblInstallStatus.Text = statusPrefix + $"({i + 1}/{plannedRows.Count}) Kuruluyor: {program.Name}";
                 progressBarInstall.Value = i;
 
                 // 1618 (başka kurulum sürüyor — ör. arka planda Windows Update) için birkaç kez bekleyip tekrar dene
@@ -843,7 +1064,7 @@ namespace AIOInstaller
                     bool started = ProgramManager.StartInstallProcess(program, out proc);
                     if (!started)
                     {
-                        SetRowStatus(row, "Hata", C(255, 205, 210));
+                        SetRowStatus(row, "Hata", Theme.Danger);
                         break;
                     }
 
@@ -851,7 +1072,7 @@ namespace AIOInstaller
                     if (proc == null)
                     {
                         successCount++;
-                        SetRowStatus(row, "Başlatıldı", C(200, 230, 201));
+                        SetRowStatus(row, "Başlatıldı", Theme.Success);
                         break;
                     }
 
@@ -870,7 +1091,7 @@ namespace AIOInstaller
                     if (installCts.IsCancellationRequested)
                     {
                         SetRowStatus(row, proc.HasExited ? $"Durduruldu (Çıkış: {proc.ExitCode})" : "Durduruldu",
-                            C(255, 205, 210));
+                            Theme.Danger);
                         stopped = true;
                         break;
                     }
@@ -880,15 +1101,15 @@ namespace AIOInstaller
                     if (outcome == ProgramManager.InstallOutcome.Busy && attempt < maxBusyRetries)
                     {
                         SetRowStatus(row, $"Başka kurulum sürüyor, bekleniyor ({attempt + 1}/{maxBusyRetries})...",
-                            C(255, 249, 196));
-                        lblInstallStatus.Text = $"({i + 1}/{plannedRows.Count}) {program.Name}: başka bir kurulum bitene kadar bekleniyor...";
+                            Theme.Warning);
+                        lblInstallStatus.Text = statusPrefix + $"({i + 1}/{plannedRows.Count}) {program.Name}: başka bir kurulum bitene kadar bekleniyor...";
                         for (int w = 0; w < 60 && !installCts.IsCancellationRequested; w++)
                         {
                             await Task.Delay(500); // ~30 sn
                         }
                         if (installCts.IsCancellationRequested)
                         {
-                            SetRowStatus(row, "Durduruldu", C(255, 205, 210));
+                            SetRowStatus(row, "Durduruldu", Theme.Danger);
                             stopped = true;
                             break;
                         }
@@ -899,18 +1120,18 @@ namespace AIOInstaller
                     {
                         case ProgramManager.InstallOutcome.Success:
                             successCount++;
-                            SetRowStatus(row, text, C(200, 230, 201));
+                            SetRowStatus(row, text, Theme.Success);
                             break;
                         case ProgramManager.InstallOutcome.RebootRequired:
                             successCount++;
                             rebootRequired = true;
-                            SetRowStatus(row, text, C(220, 237, 200));
+                            SetRowStatus(row, text, Theme.Success);
                             break;
                         case ProgramManager.InstallOutcome.Cancelled:
-                            SetRowStatus(row, text, C(255, 236, 179));
+                            SetRowStatus(row, text, Theme.Warning);
                             break;
                         default:
-                            SetRowStatus(row, text, C(255, 205, 210));
+                            SetRowStatus(row, text, Theme.Danger);
                             break;
                     }
                     break;
@@ -934,7 +1155,7 @@ namespace AIOInstaller
                         string status = Convert.ToString(row.Cells[ColStatus].Value ?? "");
                         if (status == "Bekliyor")
                         {
-                            SetRowStatus(row, "İptal edildi", C(245, 245, 245));
+                            SetRowStatus(row, "İptal edildi", Theme.TextDim);
                         }
                     }
                 }
@@ -955,7 +1176,9 @@ namespace AIOInstaller
             btnRemove.Enabled = enabled;
             btnOpenDatabase.Enabled = enabled;
             btnSync.Enabled = enabled;
-            btnDownload.Enabled = enabled;
+            navOnline.Enabled = enabled;
+            txtSearch.Enabled = enabled;
+            pageSettings.SetBusy(!enabled);
             btnActivate.Enabled = enabled;
             btnPowerShell.Enabled = enabled;
             btnDefenderOff.Enabled = enabled;
@@ -1036,18 +1259,12 @@ namespace AIOInstaller
             }
         }
 
-        private void SetRowStatus(DataGridViewRow row, string status, Color backColor)
+        /// <summary>Satırın durum rozetini günceller; tone rozetin rengidir.</summary>
+        private void SetRowStatus(DataGridViewRow row, string status, Color tone)
         {
             row.Cells[ColStatus].Value = status;
-            row.DefaultCellStyle.BackColor = backColor;
-            row.DefaultCellStyle.SelectionBackColor = backColor;
-            
-            // Alternating rows için de rengi zorla
-            foreach (DataGridViewCell cell in row.Cells)
-            {
-                cell.Style.BackColor = backColor;
-            }
-            
+            row.Cells[ColStatus].Tag = tone;
+            row.Cells[ColStatus].ToolTipText = status;
             gridPrograms.InvalidateRow(row.Index);
         }
 
@@ -1070,7 +1287,7 @@ namespace AIOInstaller
                 }
                 else
                 {
-                    MessageBox.Show("Lütfen silmek istediğiniz program(lar)ı işaretleyin veya satıra tıklayın!",
+                    Dialogs.Show("Lütfen silmek istediğiniz program(lar)ı işaretleyin veya satıra tıklayın!",
                         "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
@@ -1079,7 +1296,7 @@ namespace AIOInstaller
             var toDelete = checkedRows.Select(r => (ProgramInfo)r.Tag).ToList();
             string programList = string.Join("\n", toDelete.Select(p => $"• {p.Name}"));
 
-            DialogResult confirm = MessageBox.Show(
+            DialogResult confirm = Dialogs.Show(
                 $"{toDelete.Count} program silinecek:\n\n{programList}\n\nBu işlem dosyaları da silecektir!",
                 "Silme Onayı",
                 MessageBoxButtons.YesNo,
@@ -1097,7 +1314,7 @@ namespace AIOInstaller
 
             if (deleted > 0)
             {
-                MessageBox.Show($"{deleted} program başarıyla silindi!", "Başarılı",
+                Dialogs.Show($"{deleted} program başarıyla silindi!", "Başarılı",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadPrograms();
             }
@@ -1112,14 +1329,14 @@ namespace AIOInstaller
             }
             else
             {
-                MessageBox.Show("programlar klasörü bulunamadı!", "Hata", 
+                Dialogs.Show("programlar klasörü bulunamadı!", "Hata", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void BtnActivate_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show(
+            DialogResult result = Dialogs.Show(
                 "Microsoft Activation Scripts (MAS) çalıştırılacak.\n\n" +
                 "Bu araç Windows ve Office etkinleştirmesi yapar.\n" +
                 "Kaynak: massgrave.dev\n\n" +
@@ -1143,7 +1360,7 @@ namespace AIOInstaller
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Etkinleştirme başlatılamadı: {ex.Message}", "Hata",
+                    Dialogs.Show($"Etkinleştirme başlatılamadı: {ex.Message}", "Hata",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
@@ -1151,7 +1368,7 @@ namespace AIOInstaller
 
         private void BtnPowerShell_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                 "Aşağıdaki SMB yapılandırma komutları yönetici olarak çalıştırılacak:\n\n" +
                 "• Set-SmbClientConfiguration -EnableInsecureGuestLogons $true\n" +
                 "• Set-SmbClientConfiguration -RequireSecuritySignature $false\n" +
@@ -1174,7 +1391,7 @@ namespace AIOInstaller
 
         private void BtnDefenderOff_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                 "Windows Defender Gerçek Zamanlı Koruma KAPATILACAK.\n\nDevam etmek istiyor musunuz?",
                 "Defender Kapat", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
@@ -1193,7 +1410,7 @@ namespace AIOInstaller
 
         private void BtnDefenderOn_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                 "Windows Defender Gerçek Zamanlı Koruma AÇILACAK.\n\nDevam etmek istiyor musunuz?",
                 "Defender Aç", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -1212,7 +1429,7 @@ namespace AIOInstaller
 
         private void BtnUpdateBlock_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                 "Windows Update ENGELLENECEK.\nGüncellemeler devre dışı bırakılacak.\n\nDevam etmek istiyor musunuz?",
                 "Update Engelle", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
@@ -1229,7 +1446,7 @@ namespace AIOInstaller
 
         private void BtnUpdateAllow_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show(
+            if (Dialogs.Show(
                 "Windows Update ETKINLEŞTIRILECEK.\nGüncellemeler tekrar çalışmaya başlayacak.\n\nDevam etmek istiyor musunuz?",
                 "Update Aç", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -1254,31 +1471,47 @@ namespace AIOInstaller
                 return;
             }
 
-            DialogResult confirm = MessageBox.Show(
-                "TAM KURULUM başlatılacak. Sırasıyla şunlar yapılacak:\n\n" +
-                "1) UAC (Kullanıcı Hesabı Denetimi) kapatılacak\n" +
-                "2) Windows Defender kapatılacak (kapanmazsa elle kapatmanız istenir)\n" +
-                "3) Wi-Fi kartı varsa TNC_AP'ye bağlanmak isteyip istemediğiniz sorulacak, ardından internet kontrol edilecek\n" +
-                "4) İnternet varsa (Wi-Fi veya kablolu) Windows Update başlatılacak\n" +
-                "5) Listedeki TÜM programlar sırayla kurulacak\n" +
-                "6) PowerShell (SMB) ayarları uygulanacak\n" +
-                "7) Word/Excel/PowerPoint/Outlook masaüstü kısayolları oluşturulacak\n\n" +
-                "Devam etmek istiyor musunuz?",
-                "🚀 Tam Kurulum",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
+            int programCount = gridPrograms.Rows.Cast<DataGridViewRow>().Count(r =>
+                r.Tag != null && File.Exists(Path.Combine(ProgramManager.DatabaseFolder, ((ProgramInfo)r.Tag).FileName ?? "")));
+            var ebys = EbysLocator.Find();
 
-            if (confirm != DialogResult.Yes)
+            FullSetupOptions options;
+            using (var dlg = new FullSetupDialog(programCount, ebys, AppSettings.Current.WifiNetworks))
             {
-                return;
+                if (dlg.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+                options = dlg.Options;
             }
 
-            await RunFullSetupAsync();
+            ShowPage(pagePrograms);
+            await RunFullSetupAsync(options, ebys);
         }
 
-        private async Task RunFullSetupAsync()
+        /// <summary>
+        /// Tam Kurulum: tüm sorular baştaki seçenek penceresinde sorulur, burada
+        /// yalnızca seçilen adımlar sırayla ve sorusuz çalışır (Defender elle
+        /// kapatılması gereken durum hariç).
+        /// </summary>
+        private async Task RunFullSetupAsync(FullSetupOptions options, EbysLocator.EbysInstaller ebys)
         {
             bool uacDisabled = false;
+            var summary = new List<string>();
+            int total = options.StepCount;
+            int stepNo = 0;
+
+            void Step(string text)
+            {
+                stepNo++;
+                lblInstallStatus.Text = $"{stepNo}/{total} — {text}";
+            }
+
+            void Status(string text)
+            {
+                lblInstallStatus.Text = $"{stepNo}/{total} — {text}";
+            }
+
             try
             {
                 isInstalling = true;
@@ -1287,234 +1520,239 @@ namespace AIOInstaller
                 installStatusPanel.Visible = true;
                 btnStopInstall.Enabled = false; // sistem adımlarında durdurma yok
                 progressBarInstall.Style = ProgressBarStyle.Marquee;
+                rebootRequired = false;
 
-                // ── 1) UAC kapat ──────────────────────────────────────────
-                lblInstallStatus.Text = "1/7 — UAC kapatılıyor...";
-                string uacResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
-                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
-                    "$p='HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System'\r\n" +
-                    "if (-not (Test-Path $p)) { New-Item -Path $p -Force | Out-Null }\r\n" +
-                    "Set-ItemProperty -Path $p -Name 'ConsentPromptBehaviorAdmin' -Value 0 -Type DWord -Force\r\n" +
-                    "Set-ItemProperty -Path $p -Name 'PromptOnSecureDesktop' -Value 0 -Type DWord -Force\r\n" +
-                    "Set-ItemProperty -Path $p -Name 'EnableLUA' -Value 0 -Type DWord -Force\r\n" +
-                    "'OK'"));
-                uacDisabled = uacResult.IndexOf("OK", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                // ── 2) Defender kapat + doğrulama döngüsü ─────────────────
-                lblInstallStatus.Text = "2/7 — Windows Defender kapatılıyor...";
-                await Task.Run(() => ProgramManager.RunPowerShellScript(
-                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
-                    "Set-MpPreference -DisableRealtimeMonitoring $true\r\n" +
-                    "Set-MpPreference -DisableBehaviorMonitoring $true\r\n" +
-                    "Set-MpPreference -DisableIOAVProtection $true\r\n" +
-                    "Set-MpPreference -DisableScriptScanning $true\r\n" +
-                    "Set-MpPreference -DisableArchiveScanning $true\r\n" +
-                    "Set-MpPreference -DisableIntrusionPreventionSystem $true\r\n" +
-                    "'OK'"));
-
-                bool? defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
-                bool defenderOpened = false;
-                while (defState == true) // hâlâ açık
+                // ── UAC kapat ──────────────────────────────────────────────
+                if (options.DisableUac)
                 {
-                    if (!defenderOpened)
-                    {
-                        await Task.Run(() => ProgramManager.RunPowerShellScript(
-                            "Start-Process 'windowsdefender:' -ErrorAction SilentlyContinue", 15000));
-                        defenderOpened = true;
-                    }
-
-                    DialogResult r = MessageBox.Show(
-                        "Windows Defender otomatik kapatılamadı (büyük olasılıkla 'Kurcalama Koruması/Tamper Protection' açık).\n\n" +
-                        "Lütfen açılan Windows Güvenliği penceresinden:\n" +
-                        "  • Virüs ve tehdit koruması → Ayarları yönet\n" +
-                        "  • 'Gerçek zamanlı koruma'yı ELLE kapatın\n\n" +
-                        "Kapattıktan sonra 'Tamam'a basın (tekrar kontrol edilecek).\n" +
-                        "'İptal' derseniz bu adım atlanır ve kuruluma devam edilir.",
-                        "Defender elle kapatılmalı",
-                        MessageBoxButtons.OKCancel,
-                        MessageBoxIcon.Warning);
-
-                    if (r == DialogResult.Cancel)
-                    {
-                        break;
-                    }
-
-                    lblInstallStatus.Text = "2/7 — Defender durumu kontrol ediliyor...";
-                    defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
+                    Step("UAC kapatılıyor...");
+                    string uacResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                        "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                        "$p='HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System'\r\n" +
+                        "if (-not (Test-Path $p)) { New-Item -Path $p -Force | Out-Null }\r\n" +
+                        "Set-ItemProperty -Path $p -Name 'ConsentPromptBehaviorAdmin' -Value 0 -Type DWord -Force\r\n" +
+                        "Set-ItemProperty -Path $p -Name 'PromptOnSecureDesktop' -Value 0 -Type DWord -Force\r\n" +
+                        "Set-ItemProperty -Path $p -Name 'EnableLUA' -Value 0 -Type DWord -Force\r\n" +
+                        "'OK'"));
+                    uacDisabled = uacResult.IndexOf("OK", StringComparison.OrdinalIgnoreCase) >= 0;
+                    summary.Add(uacDisabled ? "✓ UAC kapatıldı (yeniden başlatınca tam etkin olur)." : "✗ UAC kapatılamadı.");
                 }
 
-                // ── 3) Wi-Fi sorusu ───────────────────────────────────────
-                bool wifiConnected = false;
-                lblInstallStatus.Text = "3/7 — Wi-Fi kartı kontrol ediliyor...";
-                bool hasWifi = await Task.Run(() => ProgramManager.HasWifiAdapter());
-
-                if (hasWifi)
+                // ── Defender kapat + doğrulama döngüsü ─────────────────────
+                if (options.DisableDefender)
                 {
-                    DialogResult wifiAns = MessageBox.Show(
-                        "Wi-Fi kartı bulundu.\n\n'TNC_AP' ağına bağlanılsın mı?",
-                        "Wi-Fi Bağlantısı",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question);
-
-                    if (wifiAns == DialogResult.Yes)
-                    {
-                        lblInstallStatus.Text = "3/7 — TNC_AP ağına bağlanılıyor...";
-                        string wifiResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
-                            "$ssid='TNC_AP'; $key='tekno.2453'\r\n" +
-                            "$xml = '<?xml version=''1.0''?><WLANProfile xmlns=''http://www.microsoft.com/networking/WLAN/profile/v1''><name>' + $ssid + '</name><SSIDConfig><SSID><name>' + $ssid + '</name></SSID></SSIDConfig><connectionType>ESS</connectionType><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption><sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>' + $key + '</keyMaterial></sharedKey></security></MSM></WLANProfile>'\r\n" +
-                            "$f = Join-Path $env:TEMP 'aio_wifi.xml'\r\n" +
-                            "$xml | Out-File -FilePath $f -Encoding ASCII\r\n" +
-                            "netsh wlan add profile filename=\"$f\" user=all | Out-Null\r\n" +
-                            "netsh wlan connect name=\"$ssid\" ssid=\"$ssid\" | Out-Null\r\n" +
-                            "Start-Sleep -Seconds 7\r\n" +
-                            "$st = (netsh wlan show interfaces | Out-String)\r\n" +
-                            "Remove-Item $f -ErrorAction SilentlyContinue\r\n" +
-                            "if ($st -match 'TNC_AP') { 'CONNECTED' } else { 'NOTCONN' }",
-                            60000));
-
-                        wifiConnected = wifiResult.IndexOf("CONNECTED", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                        if (!wifiConnected)
-                        {
-                            MessageBox.Show(
-                                "TNC_AP ağına bağlanılamadı. (Ağ kapsama alanında olmayabilir veya şifre değişmiş olabilir.)\n" +
-                                "Kablolu bağlantı varsa onunla devam edilecek.",
-                                "Wi-Fi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        }
-                    }
-                }
-
-                // ── 3b) İnternet kontrolü (Wi-Fi veya kablolu) ────────────
-                lblInstallStatus.Text = hasWifi
-                    ? "3/7 — İnternet bağlantısı kontrol ediliyor..."
-                    : "3/7 — Wi-Fi kartı yok, kablolu bağlantı kontrol ediliyor...";
-                bool internetAvailable = await Task.Run(() => ProgramManager.HasInternetConnection());
-
-                if (!internetAvailable)
-                {
-                    MessageBox.Show(
-                        "İnternet bağlantısı bulunamadı (Wi-Fi veya kablolu).\n" +
-                        "Windows Update adımı atlanacak, kuruluma devam edilecek.",
-                        "İnternet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-
-                // ── 4) Windows Update (internet varsa) ────────────────────
-                if (internetAvailable)
-                {
-                    lblInstallStatus.Text = "4/7 — Windows Update başlatılıyor (arka planda)...";
+                    Step("Windows Defender kapatılıyor...");
                     await Task.Run(() => ProgramManager.RunPowerShellScript(
                         "$ErrorActionPreference='SilentlyContinue'\r\n" +
-                        "Set-Service -Name wuauserv -StartupType Automatic\r\n" +
-                        "Start-Service -Name wuauserv\r\n" +
-                        "Set-Service -Name UsoSvc -StartupType Automatic\r\n" +
-                        "Start-Service -Name UsoSvc\r\n" +
-                        "Set-Service -Name bits -StartupType Automatic\r\n" +
-                        "Start-Service -Name bits\r\n" +
-                        "try { (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow() } catch {}\r\n" +
-                        "Start-Process 'UsoClient.exe' -ArgumentList 'StartInteractiveScan' -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
-                        "Start-Process 'ms-settings:windowsupdate' -ErrorAction SilentlyContinue\r\n" +
+                        "Set-MpPreference -DisableRealtimeMonitoring $true\r\n" +
+                        "Set-MpPreference -DisableBehaviorMonitoring $true\r\n" +
+                        "Set-MpPreference -DisableIOAVProtection $true\r\n" +
+                        "Set-MpPreference -DisableScriptScanning $true\r\n" +
+                        "Set-MpPreference -DisableArchiveScanning $true\r\n" +
+                        "Set-MpPreference -DisableIntrusionPreventionSystem $true\r\n" +
                         "'OK'"));
+
+                    bool? defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
+                    bool defenderOpened = false;
+                    while (defState == true) // hâlâ açık
+                    {
+                        if (!defenderOpened)
+                        {
+                            await Task.Run(() => ProgramManager.RunPowerShellScript(
+                                "Start-Process 'windowsdefender:' -ErrorAction SilentlyContinue", 15000));
+                            defenderOpened = true;
+                        }
+
+                        DialogResult r = Dialogs.Show(
+                            "Windows Defender otomatik kapatılamadı (büyük olasılıkla 'Kurcalama Koruması' açık).\n\n" +
+                            "Açılan Windows Güvenliği penceresinde:\n" +
+                            "  • Virüs ve tehdit koruması → Ayarları yönet\n" +
+                            "  • 'Gerçek zamanlı koruma'yı elle kapatın\n\n" +
+                            "Kapattıktan sonra 'Tamam'a basın, tekrar kontrol edilecek.\n" +
+                            "'İptal' derseniz bu adım atlanır.",
+                            "Defender elle kapatılmalı",
+                            MessageBoxButtons.OKCancel,
+                            MessageBoxIcon.Warning);
+
+                        if (r == DialogResult.Cancel)
+                        {
+                            break;
+                        }
+
+                        Status("Defender durumu kontrol ediliyor...");
+                        defState = await Task.Run(() => ProgramManager.IsDefenderRealtimeOn());
+                    }
+                    summary.Add(defState == true ? "✗ Defender açık kaldı (adım atlandı)." : "✓ Defender kapatıldı.");
                 }
 
-                // ── 5) Tüm programları sırayla kur ────────────────────────
-                int programsOk = 0;
-                rebootRequired = false;
-                var plannedRows = new List<DataGridViewRow>();
-                foreach (DataGridViewRow row in gridPrograms.Rows)
+                // ── Wi-Fi: kayıtlı ağları sırayla dene ─────────────────────
+                if (options.ConnectWifi)
                 {
-                    if (row.Tag == null) continue;
-                    var prog = (ProgramInfo)row.Tag;
-                    bool fileExists = File.Exists(
-                        System.IO.Path.Combine(ProgramManager.DatabaseFolder, prog.FileName ?? ""));
-                    if (fileExists)
+                    Step("Wi-Fi kartı kontrol ediliyor...");
+                    bool hasWifi = await Task.Run(() => ProgramManager.HasWifiAdapter());
+                    var networks = AppSettings.Current.WifiNetworks.ToList();
+
+                    if (!hasWifi)
                     {
-                        row.Cells[ColSelect].Value = true; // Tam Kurulum: hepsini işaretle
-                        plannedRows.Add(row);
+                        summary.Add("• Wi-Fi kartı yok, kablolu bağlantıyla devam edildi.");
+                    }
+                    else if (networks.Count == 0)
+                    {
+                        summary.Add("• Kayıtlı Wi-Fi ağı yok (Ayarlar'dan ekleyebilirsiniz).");
+                    }
+                    else
+                    {
+                        string connected = await Task.Run(() => WifiService.ConnectToFirstAvailable(networks,
+                            ssid => BeginInvoke((Action)(() => Status($"'{ssid}' ağına bağlanılıyor...")))));
+                        summary.Add(connected != null
+                            ? $"✓ Wi-Fi: '{connected}' ağına bağlanıldı."
+                            : "✗ Kayıtlı Wi-Fi ağlarının hiçbirine bağlanılamadı.");
                     }
                 }
 
-                if (plannedRows.Count > 0)
+                // ── Windows Update (internet varsa) ────────────────────────
+                if (options.WindowsUpdate)
                 {
-                    btnStopInstall.Enabled = true; // kurulum aşamasında durdurulabilir
-                    lblInstallStatus.Text = $"5/7 — {plannedRows.Count} program kuruluyor...";
-                    programsOk = await RunInstallLoopAsync(plannedRows);
-                    btnStopInstall.Enabled = false;
+                    Step("İnternet bağlantısı kontrol ediliyor...");
+                    bool internetAvailable = await Task.Run(() => ProgramManager.HasInternetConnection());
 
+                    if (!internetAvailable)
+                    {
+                        summary.Add("✗ İnternet yok, Windows Update atlandı.");
+                    }
+                    else
+                    {
+                        Status("Windows Update başlatılıyor (arka planda)...");
+                        await Task.Run(() => ProgramManager.RunPowerShellScript(
+                            "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                            "Set-Service -Name wuauserv -StartupType Automatic\r\n" +
+                            "Start-Service -Name wuauserv\r\n" +
+                            "Set-Service -Name UsoSvc -StartupType Automatic\r\n" +
+                            "Start-Service -Name UsoSvc\r\n" +
+                            "Set-Service -Name bits -StartupType Automatic\r\n" +
+                            "Start-Service -Name bits\r\n" +
+                            "try { (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow() } catch {}\r\n" +
+                            "Start-Process 'UsoClient.exe' -ArgumentList 'StartInteractiveScan' -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                            "Start-Process 'ms-settings:windowsupdate' -ErrorAction SilentlyContinue\r\n" +
+                            "'OK'"));
+                        summary.Add("✓ Windows Update arka planda başlatıldı.");
+                    }
+                }
+
+                // ── Listedeki tüm programlar ───────────────────────────────
+                if (options.InstallPrograms)
+                {
+                    Step("Programlar hazırlanıyor...");
+                    var plannedRows = new List<DataGridViewRow>();
+                    foreach (DataGridViewRow row in gridPrograms.Rows)
+                    {
+                        if (row.Tag == null) continue;
+                        var prog = (ProgramInfo)row.Tag;
+                        if (File.Exists(Path.Combine(ProgramManager.DatabaseFolder, prog.FileName ?? "")))
+                        {
+                            row.Cells[ColSelect].Value = true; // Tam Kurulum: hepsini işaretle
+                            plannedRows.Add(row);
+                        }
+                    }
+
+                    if (plannedRows.Count > 0)
+                    {
+                        btnStopInstall.Enabled = true; // kurulum aşamasında durdurulabilir
+                        int stepAtStart = stepNo;
+                        int programsOk = await RunInstallLoopAsync(plannedRows, $"{stepAtStart}/{total} — ");
+                        btnStopInstall.Enabled = false;
+
+                        if (installCts.IsCancellationRequested)
+                        {
+                            Dialogs.Show("Program kurulumu durduruldu. Tam Kurulum iptal edildi.",
+                                "İptal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        summary.Add((programsOk == plannedRows.Count ? "✓ " : "✗ ") +
+                            $"Programlar: {programsOk}/{plannedRows.Count} başarıyla kuruldu.");
+                    }
+                    else
+                    {
+                        summary.Add("• Kurulacak program yoktu.");
+                    }
+                    progressBarInstall.Style = ProgressBarStyle.Marquee;
+                }
+
+                // ── MEB EBYS (programlardan sonra, pencereli) ──────────────
+                if (options.InstallEbys)
+                {
+                    Step("MEB EBYS kuruluyor — açılan kurulum penceresini takip edin...");
+                    string ebysResult = await InstallEbysAsync(ebys);
                     if (installCts.IsCancellationRequested)
                     {
-                        MessageBox.Show("Program kurulumu durduruldu. Tam Kurulum iptal edildi.",
+                        Dialogs.Show("EBYS kurulumu durduruldu. Tam Kurulum iptal edildi.",
                             "İptal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
+                    summary.Add(ebysResult);
                 }
-                else
+
+                // ── SMB ayarları ───────────────────────────────────────────
+                if (options.ApplySmb)
                 {
-                    lblInstallStatus.Text = "5/7 — Kurulacak program yok, atlanıyor...";
+                    Step("SMB ayarları uygulanıyor...");
+                    await Task.Run(() => ProgramManager.RunPowerShellScript(
+                        "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                        "Set-SmbClientConfiguration -EnableInsecureGuestLogons $true -Force\r\n" +
+                        "Set-SmbClientConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                        "Set-SmbServerConfiguration -RequireSecuritySignature $false -Force\r\n" +
+                        "'OK'"));
+                    summary.Add("✓ SMB ayarları uygulandı.");
                 }
 
-                progressBarInstall.Style = ProgressBarStyle.Marquee;
+                // ── Office masaüstü kısayolları ────────────────────────────
+                if (options.OfficeShortcuts)
+                {
+                    Step("Office kısayolları oluşturuluyor...");
+                    string officeResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
+                        "$ErrorActionPreference='SilentlyContinue'\r\n" +
+                        "$apps = [ordered]@{ 'Word'='WINWORD.EXE'; 'Excel'='EXCEL.EXE'; 'PowerPoint'='POWERPNT.EXE'; 'Outlook'='OUTLOOK.EXE' }\r\n" +
+                        "$ws = New-Object -ComObject WScript.Shell\r\n" +
+                        "$desk = [Environment]::GetFolderPath('CommonDesktopDirectory')\r\n" +
+                        "if (-not $desk) { $desk = [Environment]::GetFolderPath('Desktop') }\r\n" +
+                        "$made = @()\r\n" +
+                        "foreach ($name in $apps.Keys) {\r\n" +
+                        "  $exe = $apps[$name]; $path = $null\r\n" +
+                        "  foreach ($root in @(('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe), ('HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe))) {\r\n" +
+                        "    $v = (Get-ItemProperty -Path $root -ErrorAction SilentlyContinue).'(default)'\r\n" +
+                        "    if ($v -and (Test-Path $v)) { $path = $v; break }\r\n" +
+                        "  }\r\n" +
+                        "  if ($path) {\r\n" +
+                        "    $lnk = $ws.CreateShortcut((Join-Path $desk ($name + '.lnk')))\r\n" +
+                        "    $lnk.TargetPath = $path; $lnk.Save(); $made += $name\r\n" +
+                        "  }\r\n" +
+                        "}\r\n" +
+                        "($made -join ',')"));
 
-                // ── 6) PowerShell (SMB) ayarları ──────────────────────────
-                lblInstallStatus.Text = "6/7 — SMB ayarları uygulanıyor...";
-                await Task.Run(() => ProgramManager.RunPowerShellScript(
-                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
-                    "Set-SmbClientConfiguration -EnableInsecureGuestLogons $true -Force\r\n" +
-                    "Set-SmbClientConfiguration -RequireSecuritySignature $false -Force\r\n" +
-                    "Set-SmbServerConfiguration -RequireSecuritySignature $false -Force\r\n" +
-                    "'OK'"));
+                    summary.Add(string.IsNullOrWhiteSpace(officeResult) || officeResult.StartsWith("ERR")
+                        ? "✗ Office bulunamadı, kısayol oluşturulamadı."
+                        : $"✓ Office kısayolları: {officeResult}");
+                }
 
-                // ── 7) Office masaüstü kısayolları ────────────────────────
-                lblInstallStatus.Text = "7/7 — Office kısayolları oluşturuluyor...";
-                string officeResult = await Task.Run(() => ProgramManager.RunPowerShellScript(
-                    "$ErrorActionPreference='SilentlyContinue'\r\n" +
-                    "$apps = [ordered]@{ 'Word'='WINWORD.EXE'; 'Excel'='EXCEL.EXE'; 'PowerPoint'='POWERPNT.EXE'; 'Outlook'='OUTLOOK.EXE' }\r\n" +
-                    "$ws = New-Object -ComObject WScript.Shell\r\n" +
-                    "$desk = [Environment]::GetFolderPath('CommonDesktopDirectory')\r\n" +
-                    "if (-not $desk) { $desk = [Environment]::GetFolderPath('Desktop') }\r\n" +
-                    "$made = @()\r\n" +
-                    "foreach ($name in $apps.Keys) {\r\n" +
-                    "  $exe = $apps[$name]; $path = $null\r\n" +
-                    "  foreach ($root in @(('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe), ('HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' + $exe))) {\r\n" +
-                    "    $v = (Get-ItemProperty -Path $root -ErrorAction SilentlyContinue).'(default)'\r\n" +
-                    "    if ($v -and (Test-Path $v)) { $path = $v; break }\r\n" +
-                    "  }\r\n" +
-                    "  if ($path) {\r\n" +
-                    "    $lnk = $ws.CreateShortcut((Join-Path $desk ($name + '.lnk')))\r\n" +
-                    "    $lnk.TargetPath = $path; $lnk.Save(); $made += $name\r\n" +
-                    "  }\r\n" +
-                    "}\r\n" +
-                    "($made -join ',')"));
-
-                // ── Bitti ─────────────────────────────────────────────────
+                // ── Bitti ──────────────────────────────────────────────────
                 lblInstallStatus.Text = "Tam Kurulum tamamlandı.";
+                progressBarInstall.Style = ProgressBarStyle.Continuous;
+                progressBarInstall.Value = progressBarInstall.Maximum;
 
-                string officeInfo = string.IsNullOrWhiteSpace(officeResult) || officeResult.StartsWith("ERR")
-                    ? "⚠ Office bulunamadı — kısayol oluşturulamadı."
-                    : $"✅ Office kısayolları oluşturuldu: {officeResult}";
+                string restartNote = uacDisabled || rebootRequired
+                    ? "\n\nDeğişikliklerin tam etkin olması için bilgisayarı yeniden başlatın."
+                    : "";
 
-                string uacInfo = uacDisabled
-                    ? "✅ UAC kapatıldı. (TAM etki için bilgisayarı yeniden başlatın.)"
-                    : "⚠ UAC kapatılamadı.";
-
-                string programsInfo = plannedRows.Count == 0
-                    ? "⚠ Kurulacak program yoktu."
-                    : (programsOk == plannedRows.Count ? "✅ " : "⚠ ") +
-                      $"Programlar: {programsOk}/{plannedRows.Count} başarıyla kuruldu (detay 'Durum' sütununda)." +
-                      (rebootRequired ? "\n⚠ Bazı programlar yeniden başlatma istiyor." : "");
-
-                MessageBox.Show(
-                    "🚀 TAM KURULUM TAMAMLANDI!\n\n" +
-                    uacInfo + "\n" +
-                    programsInfo + "\n" +
-                    officeInfo + "\n\n" +
-                    "Not: UAC değişikliğinin tam olarak etkin olması için bilgisayarı yeniden başlatmanız önerilir.",
-                    "İşlem Bitti",
+                Dialogs.Show(
+                    (summary.Count == 0 ? "Hiçbir adım seçilmemişti." : string.Join("\n", summary)) + restartNote,
+                    "Tam Kurulum tamamlandı",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Tam Kurulum sırasında hata oluştu:\n{ex.Message}",
+                Dialogs.Show($"Tam Kurulum sırasında hata oluştu:\n{ex.Message}",
                     "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -1531,6 +1769,62 @@ namespace AIOInstaller
             }
         }
 
+        /// <summary>
+        /// EBYS kurulum dosyasını pencereli çalıştırır ve bitmesini bekler.
+        /// Özet satırını döndürür. Durdur butonu bu aşamada aktiftir.
+        /// </summary>
+        private async Task<string> InstallEbysAsync(EbysLocator.EbysInstaller ebys)
+        {
+            if (ebys == null || !File.Exists(ebys.FilePath))
+            {
+                return "✗ EBYS kurulum dosyası bulunamadı (programın yanına EBYS*.exe koyun).";
+            }
+
+            Process proc;
+            try
+            {
+                proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = ebys.FilePath,
+                    Arguments = (AppSettings.Current.EbysArguments ?? "").Trim(),
+                    WorkingDirectory = Path.GetDirectoryName(ebys.FilePath),
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                return "✗ EBYS başlatılamadı: " + ex.Message;
+            }
+
+            if (proc == null)
+            {
+                return "✓ EBYS kurulumu başlatıldı (takip edilemedi).";
+            }
+
+            btnStopInstall.Enabled = true;
+            try
+            {
+                while (!proc.HasExited)
+                {
+                    if (installCts.IsCancellationRequested)
+                    {
+                        TryStopProcess(proc);
+                        return "✗ EBYS kurulumu durduruldu.";
+                    }
+                    await Task.Delay(500);
+                }
+            }
+            finally
+            {
+                btnStopInstall.Enabled = false;
+            }
+
+            var (outcome, text) = ProgramManager.DescribeExitCode(proc.ExitCode);
+            if (outcome == ProgramManager.InstallOutcome.RebootRequired) rebootRequired = true;
+            bool ok = outcome == ProgramManager.InstallOutcome.Success || outcome == ProgramManager.InstallOutcome.RebootRequired;
+            return (ok ? "✓ " : "✗ ") + $"{ebys.DisplayName}: {text}";
+        }
+
         private async void BtnBloatware_Click(object sender, EventArgs e)
         {
             if (isInstalling)
@@ -1538,7 +1832,7 @@ namespace AIOInstaller
                 return;
             }
 
-            DialogResult confirm = MessageBox.Show(
+            DialogResult confirm = Dialogs.Show(
                 "Gereksiz Windows uygulamaları (bloatware) kaldırılacak:\n\n" +
                 "• Xbox uygulamaları, Haritalar, Hava Durumu, Haberler\n" +
                 "• Skype, People, Your Phone, Clipchamp, To-Do\n" +
@@ -1601,7 +1895,7 @@ namespace AIOInstaller
                     int.TryParse(num, out removed);
                 }
 
-                MessageBox.Show(
+                Dialogs.Show(
                     $"Temizlik tamamlandı.\n\nKaldırılan uygulama sayısı: {removed}\n\n" +
                     "(Zaten kurulu olmayan uygulamalar sayılmaz.)",
                     "Bloatware Temizlendi",
@@ -1610,7 +1904,7 @@ namespace AIOInstaller
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Bloatware temizleme sırasında hata: {ex.Message}", "Hata",
+                Dialogs.Show($"Bloatware temizleme sırasında hata: {ex.Message}", "Hata",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -1642,12 +1936,12 @@ namespace AIOInstaller
                 var proc = Process.Start(startInfo);
                 proc?.WaitForExit();
 
-                MessageBox.Show($"{actionName} işlemi tamamlandı!", "Başarılı",
+                Dialogs.Show($"{actionName} işlemi tamamlandı!", "Başarılı",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Komut çalıştırılamadı: {ex.Message}", "Hata",
+                Dialogs.Show($"Komut çalıştırılamadı: {ex.Message}", "Hata",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -1667,12 +1961,12 @@ namespace AIOInstaller
 
             if (result.added > 0 || result.removed > 0)
             {
-                MessageBox.Show($"Senkronizasyon tamamlandı!\n\nYol: {dbPath}\nEklenen: {result.added}\nKaldırılan: {result.removed}", 
+                Dialogs.Show($"Senkronizasyon tamamlandı!\n\nYol: {dbPath}\nEklenen: {result.added}\nKaldırılan: {result.removed}", 
                     "Veritabanı Güncellendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                MessageBox.Show($"Veritabanı tarandı ve liste güncellendi.\nYol: {dbPath}", 
+                Dialogs.Show($"Veritabanı tarandı ve liste güncellendi.\nYol: {dbPath}", 
                     "Yenilendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
